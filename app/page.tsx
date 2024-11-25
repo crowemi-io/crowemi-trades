@@ -1,6 +1,7 @@
 import Feed from "./feed";
 import Position from "./position";
 import Stat from "./stat";
+import Footer from "./footer";
 
 export default function Home() {
   return (
@@ -20,6 +21,7 @@ export default function Home() {
       <div className="pt-20 pb-20 flex justify-center">
         <Feed />
       </div>
+      <Footer></Footer>
 
     </div>
   );
