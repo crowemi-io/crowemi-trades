@@ -1,5 +1,5 @@
 import { getEvents } from './actions'
-import { MinusCircleIcon, PlusCircleIcon, CheckIcon, HandThumbUpIcon, UserIcon } from '@heroicons/react/20/solid'
+import { ArrowUpCircleIcon, ArrowDownCircleIcon } from '@heroicons/react/20/solid'
 
 const timeline = await getEvents()
 

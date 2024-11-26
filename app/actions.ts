@@ -1,6 +1,6 @@
 "use server"
 
-import { MinusCircleIcon, PlusCircleIcon, CheckIcon, HandThumbUpIcon, UserIcon } from '@heroicons/react/20/solid'
+import { ArrowUpCircleIcon, ArrowDownCircleIcon, ArrowDownIcon, ArrowUpIcon } from '@heroicons/react/20/solid'
 
 const URL = "http://127.0.0.1:8000/v1/"
 
@@ -46,16 +46,43 @@ export async function getEvents() : Promise<any[]> {
         let ret = JSON.parse(data)
         ret.forEach((event: Event) => {
             if (event.type == 'sell') {
-                event.icon = MinusCircleIcon
+                event.icon = ArrowDownCircleIcon
                 event.iconBackground = 'bg-red-400'
             }
             if (event.type == 'buy') {
-                event.icon = PlusCircleIcon
-                event.iconBackground = 'bg-green-400'
+                event.icon = ArrowUpCircleIcon
+                event.iconBackground = 'bg-blue-400'
             }
         })
         return ret
     } catch(error) {    
         return []
     }
+}
+
+export type Position = {
+    asset_id: string,
+    symbol: string,
+    current_price: number,
+    qty: number,
+    market_value: number,
+    unrealized_pl: number,
+    icon: any,
+    iconBackground: string
+}
+
+export async function getPositions() : Promise<any[]> {
+    let response = await fetch(`${URL}order/position/`)
+    let data = await response.json()
+    data.forEach((position: Position) => {
+        if (position.unrealized_pl < 0) {
+            position.icon = ArrowDownIcon
+            position.iconBackground = 'bg-red-400'
+        }
+        if (position.unrealized_pl > 0) {
+            position.icon = ArrowUpIcon
+            position.iconBackground = 'bg-blue-400'
+        }
+    })
+    return data
 }

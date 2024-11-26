@@ -1,17 +1,15 @@
-const people = [
-  { name: 'Lindsay Walton', title: 'Front-end Developer', email: 'lindsay.walton@example.com', role: 'Member' },
-  // More people...
-]
+import { getPositions, Position } from "./actions"
+import { ArrowUpIcon, ArrowDownIcon } from '@heroicons/react/20/solid'
 
-export default function Example() {
+
+const people = await getPositions()
+
+export default function getPosition() {
   return (
     <div className="px-4 sm:px-6 lg:px-8">
       <div className="sm:flex sm:items-center">
         <div className="sm:flex-auto">
           <h1 className="text-base font-semibold text-gray-900">Current Positions</h1>
-          <p className="mt-2 text-sm text-gray-700">
-            A list of all the current positions held in the account as of DATE.
-          </p>
         </div>
       </div>
       <div className="mt-8 flow-root">
@@ -22,36 +20,35 @@ export default function Example() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">
-                      Name
+                      Asset
                     </th>
                     <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                      Title
+                      Price
                     </th>
                     <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                      Email
+                      Qty
                     </th>
                     <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                      Role
+                      Market Value
                     </th>
-                    <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6">
-                      <span className="sr-only">Edit</span>
+                    <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                      Total P/L ($)
+                    </th>
+                    <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
                     </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 bg-white">
-                  {people.map((person) => (
-                    <tr key={person.email}>
+                  {people.map((position: Position) => (
+                    <tr key={position.asset_id}>
                       <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
-                        {person.name}
+                        {position.symbol}
                       </td>
-                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{person.title}</td>
-                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{person.email}</td>
-                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{person.role}</td>
-                      <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                        <a href="#" className="text-indigo-600 hover:text-indigo-900">
-                          Edit<span className="sr-only">, {person.name}</span>
-                        </a>
-                      </td>
+                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">${position.current_price}</td>
+                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{position.qty}</td>
+                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">${position.market_value}</td>
+                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">${position.unrealized_pl}</td>
+                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500"><position.icon className="size-2 text-white" /></td>
                     </tr>
                   ))}
                 </tbody>
