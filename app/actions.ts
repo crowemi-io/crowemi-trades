@@ -1,12 +1,22 @@
 "use server"
 
 import { ArrowUpCircleIcon, ArrowDownCircleIcon, ArrowDownIcon, ArrowUpIcon } from '@heroicons/react/20/solid'
+import dotenv from 'dotenv'
 
-const URL = "http://127.0.0.1:8000/v1/"
+const {GoogleAuth} = require('google-auth-library');
+
+dotenv.config()
+
+const URL = process.env.URL
+
+const targetAudience = URL
+const auth = new GoogleAuth();
+const client = await auth.getIdTokenClient(targetAudience)
+const TOKEN = await client.idTokenProvider.fetchIdToken(targetAudience);
 
 export async function getStats() : Promise<any[]> {
     try {
-        let response = await fetch(`${URL}order/profit/`)
+        let response = await fetch(`${URL}/v1/order/profit/`, { headers: {'Authorization': `Bearer ${TOKEN}`}})
         let data = await response.json()
     
         let today = data.today.toFixed(2)
@@ -41,21 +51,22 @@ type Event = {
 
 export async function getEvents() : Promise<any[]> {
     try {
-        let response = await fetch(`${URL}order/feed/`)
+        let response = await fetch(`${URL}/v1/order/feed/`, { headers: {'Authorization': `Bearer ${TOKEN}`}})
         let data = await response.json()
         let ret = JSON.parse(data)
         ret.forEach((event: Event) => {
             if (event.type == 'sell') {
                 event.icon = ArrowDownCircleIcon
-                event.iconBackground = 'bg-red-400'
+                event.iconBackground = 'bg-red-700'
             }
             if (event.type == 'buy') {
                 event.icon = ArrowUpCircleIcon
-                event.iconBackground = 'bg-blue-400'
+                event.iconBackground = 'bg-green-700'
             }
         })
         return ret
     } catch(error) {    
+        // TODO: probably need to inform the client
         return []
     }
 }
@@ -72,17 +83,23 @@ export type Position = {
 }
 
 export async function getPositions() : Promise<any[]> {
-    let response = await fetch(`${URL}order/position/`)
-    let data = await response.json()
-    data.forEach((position: Position) => {
-        if (position.unrealized_pl < 0) {
-            position.icon = ArrowDownIcon
-            position.iconBackground = 'bg-red-400'
-        }
-        if (position.unrealized_pl > 0) {
-            position.icon = ArrowUpIcon
-            position.iconBackground = 'bg-blue-400'
-        }
-    })
-    return data
+    try {
+        let response = await fetch(`${URL}/v1/order/position/`, { headers: {'Authorization': `Bearer ${TOKEN}`}})
+        let data = await response.json()
+        data.forEach((position: Position) => {
+            if (position.unrealized_pl < 0) {
+                position.icon = ArrowDownIcon
+                position.iconBackground = 'bg-red-400'
+            }
+            if (position.unrealized_pl > 0) {
+                position.icon = ArrowUpIcon
+                position.iconBackground = 'bg-blue-400'
+            }
+        })
+        return data
+    } catch (error) {
+        console.error(error)
+        // TODO: probably need to inform the client
+        return []
+    }
 }
