@@ -48,6 +48,16 @@ resource "google_cloud_run_v2_service" "this" {
   }
 }
 
+data "google_iam_policy" "noauth" {
+    binding {
+        role = "roles/run.invoker"
+        members = [
+            "allUsers",
+        ]
+    }
+}
+
+
 resource "google_cloud_run_service_iam_policy" "noauth" {
   location = google_cloud_run_v2_service.this.location
   project  = google_cloud_run_v2_service.this.project
