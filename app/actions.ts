@@ -1,23 +1,37 @@
 "use server"
 
 import { ArrowUpCircleIcon, ArrowDownCircleIcon, ArrowDownIcon, ArrowUpIcon } from '@heroicons/react/20/solid'
-import { log } from 'console';
 import dotenv from 'dotenv'
 
+import { GoogleAuth } from 'google-auth-library';
+const auth = new GoogleAuth();
 
 dotenv.config()
 
 const URL = process.env.URL || 'http://0.0.0.0:8000'
 
+const targetAudience = 'https://crowemi-trades-593818502186.us-west1.run.app/';
+
 // const auth = new GoogleAuth();
 // const client = await auth.getIdTokenClient(URL)
 // const TOKEN = await client.idTokenProvider.fetchIdToken(URL);
+type Stat = {
+    today: number,
+    all_time: number,
+    last_30: number,
+    last_60: number,
+    symbols: Object
+}
 
 export async function getStats() : Promise<any[]> {
     try {
         console.log(`URL: ${URL}`)
-        const response = await fetch(`${URL}/v1/order/profit/`)
-        const data = await response.json()
+        console.info(`request ${URL}/v1/order/profit/ with target audience ${URL}`);
+        const client = await auth.getIdTokenClient(`${URL}/`);
+        const url = `${URL}/v1/order/profit/`;
+        const res = await client.request({url});
+        const data: Stat = res.data as Stat
+        console.info(res.data);  
 
         return [
             { name: 'Today', value: `$${data.today.toFixed(2)}` },
@@ -47,9 +61,12 @@ type Event = {
 export async function getEvents() : Promise<any[]> {
     try {
         console.log(`URL: ${URL}`)
-        const response = await fetch(`${URL}/v1/order/feed/`)
-        const data = await response.json()
-        const ret = JSON.parse(data)
+        console.info(`request ${URL}/v1/order/feed/ with target audience ${URL}`);
+        const client = await auth.getIdTokenClient(`${URL}/`);
+        const url = `${URL}/v1/order/feed/`;
+        const res = await client.request({url});
+        const ret: Event[] = JSON.parse(res.data as string)
+
         ret.forEach((event: Event) => {
             if (event.type == 'sell') {
                 event.icon = ArrowDownCircleIcon
@@ -81,9 +98,13 @@ export type Position = {
 export async function getPositions() : Promise<any[]> {
     try {
         console.log(`URL: ${URL}`)
-        const response = await fetch(`${URL}/v1/order/position/`)
-        const data = await response.json()
-        data.forEach((position: Position) => {
+        console.info(`request ${URL}/v1/order/position/ with target audience ${URL}`);
+        const client = await auth.getIdTokenClient(`${URL}/`);
+        const url = `${URL}/v1/order/position/`;
+        const res = await client.request({url});
+        const ret: Position[] = res.data as Position[]
+
+        ret.forEach((position: Position) => {
             if (position.unrealized_pl < 0) {
                 position.icon = ArrowDownIcon
                 position.iconBackground = 'bg-red-400'
@@ -93,7 +114,7 @@ export async function getPositions() : Promise<any[]> {
                 position.iconBackground = 'bg-blue-400'
             }
         })
-        return data
+        return ret
     } catch (error) {
         console.log(`Error: ${error}`)
         // TODO: probably need to inform the client
