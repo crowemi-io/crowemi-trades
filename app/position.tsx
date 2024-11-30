@@ -1,5 +1,4 @@
 import { getPositions, Position } from "./actions"
-import { ArrowUpIcon, ArrowDownIcon } from '@heroicons/react/20/solid'
 
 
 const people = await getPositions()

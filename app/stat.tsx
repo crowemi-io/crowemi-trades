@@ -1,10 +1,6 @@
 import { getStats } from './actions'
 
 const stats = await getStats()
-  
-function classNames(...classes:any[]) {
-return classes.filter(Boolean).join(' ')
-}
 
 export default function Stat() {
 return (
