@@ -15,6 +15,7 @@ const URL = process.env.URL || 'http://0.0.0.0:8000'
 
 export async function getStats() : Promise<any[]> {
     try {
+        console.log(`URL: ${URL}`)
         const response = await fetch(`${URL}/v1/order/profit/`)
         const data = await response.json()
 
@@ -25,7 +26,7 @@ export async function getStats() : Promise<any[]> {
             { name: 'All time', value: `$${data.all_time.toFixed(2)}` },
         ]
     } catch (error) {
-        console.error(error)
+        console.log(`Error: ${error}`)
         // TODO: probably need to inform the client
         return []
     }
@@ -45,6 +46,7 @@ type Event = {
 
 export async function getEvents() : Promise<any[]> {
     try {
+        console.log(`URL: ${URL}`)
         const response = await fetch(`${URL}/v1/order/feed/`)
         const data = await response.json()
         const ret = JSON.parse(data)
@@ -60,8 +62,7 @@ export async function getEvents() : Promise<any[]> {
         })
         return ret
     } catch(error) {    
-        // TODO: probably need to inform the client
-        log(error)
+        console.log(`Error: ${error}`)
         return []
     }
 }
@@ -79,6 +80,7 @@ export type Position = {
 
 export async function getPositions() : Promise<any[]> {
     try {
+        console.log(`URL: ${URL}`)
         const response = await fetch(`${URL}/v1/order/position/`)
         const data = await response.json()
         data.forEach((position: Position) => {
@@ -93,7 +95,7 @@ export async function getPositions() : Promise<any[]> {
         })
         return data
     } catch (error) {
-        console.error(error)
+        console.log(`Error: ${error}`)
         // TODO: probably need to inform the client
         return []
     }
