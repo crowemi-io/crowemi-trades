@@ -36,11 +36,11 @@ jobs:
           service_account_key: ${{ env.SERVICE_ACCOUNT_KEY }}
           export_default_credentials: true
 
-      - name: Export default credentials to file
-        run: |
-          echo ${{ env.SERVICE_ACCOUNT_KEY }} | base64 --decode > $HOME/gcloud-service-key.json
-          gcloud auth activate-service-account --key-file=$HOME/gcloud-service-key.json
-          gcloud auth application-default login --brief
+      # - name: Export default credentials to file
+      #   run: |
+      #     echo ${{ env.SERVICE_ACCOUNT_KEY }} > $HOME/gcloud-service-key.json
+      #     gcloud auth activate-service-account --key-file=$HOME/gcloud-service-key.json
+      #     gcloud auth application-default login --brief
 
       - name: Configure Docker
         run: gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY }}
