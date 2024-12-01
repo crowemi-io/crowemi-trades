@@ -7,7 +7,7 @@ import Header from "./header";
 export default function Home() {
   return (
     <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
-      <Header></Header>
+      <Header />
       
       <hr className="border-t border-gray-200" />
 
@@ -29,7 +29,7 @@ export default function Home() {
 
       <hr className="border-t border-gray-200" />
 
-      <Footer></Footer>
+      <Footer />
 
     </div>
   );

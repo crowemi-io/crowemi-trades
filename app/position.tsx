@@ -1,9 +1,10 @@
 import { getPositions, Position } from "./actions"
 
 
-const people = await getPositions()
+export default async function getPosition() {
 
-export default function getPosition() {
+  const people = await getPositions()
+
   return (
     <div className="px-4 sm:px-6 lg:px-8">
       <div className="sm:flex sm:items-center">

@@ -1,28 +1,28 @@
-const cspHeader = `
-    default-src 'self';
-    script-src 'self' 'unsafe-eval' 'unsafe-inline';
-    style-src 'self' 'unsafe-inline';
-    img-src 'self' blob: data:;
-    font-src 'self';
-    object-src 'none';
-    base-uri 'self';
-    form-action 'self';
-    frame-ancestors 'none';
-    upgrade-insecure-requests;
-`
- 
+// next.config.js
+
 module.exports = {
-  async headers() {
-    return [
-      {
-        source: '/(.*)',
-        headers: [
-          {
-            key: 'Content-Security-Policy',
-            value: cspHeader.replace(/\n/g, ''),
-          },
-        ],
-      },
-    ]
-  },
-}
+    async headers() {
+      return [
+        {
+          source: '/(.*)', // Apply these headers to all routes
+          headers: [
+            {
+              key: 'Content-Security-Policy',
+              value: `
+                default-src 'self';
+                script-src 'self' 'unsafe-eval' 'unsafe-inline';
+                style-src 'self' 'unsafe-inline';
+                img-src 'self' data:;
+                connect-src 'self' ${process.env.URL};
+                font-src 'self';
+                object-src 'none';
+                frame-ancestors 'none';
+                base-uri 'self';
+                form-action 'self';
+              `.replace(/\s{2,}/g, ' ').trim()
+            }
+          ]
+        }
+      ]
+    }
+  }

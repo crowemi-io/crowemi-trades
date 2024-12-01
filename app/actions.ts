@@ -10,11 +10,6 @@ dotenv.config()
 
 const URL = process.env.URL || 'http://0.0.0.0:8000'
 
-const targetAudience = 'https://crowemi-trades-593818502186.us-west1.run.app/';
-
-// const auth = new GoogleAuth();
-// const client = await auth.getIdTokenClient(URL)
-// const TOKEN = await client.idTokenProvider.fetchIdToken(URL);
 type Stat = {
     today: number,
     all_time: number,
@@ -31,7 +26,7 @@ export async function getStats() : Promise<any[]> {
         const url = `${URL}/v1/order/profit/`;
         const res = await client.request({url});
         const data: Stat = res.data as Stat
-        console.info(res.data);  
+        console.info(data);  
 
         return [
             { name: 'Today', value: `$${data.today.toFixed(2)}` },
@@ -42,7 +37,7 @@ export async function getStats() : Promise<any[]> {
     } catch (error) {
         console.log(`Error: ${error}`)
         // TODO: probably need to inform the client
-        return []
+        return [ { name: "Error", value: error} ]
     }
 }
 
@@ -79,7 +74,7 @@ export async function getEvents() : Promise<any[]> {
         })
         return ret
     } catch(error) {    
-        console.log(`Error: ${error}`)
+        console.error(`Error: ${error}`)
         return []
     }
 }
@@ -116,7 +111,7 @@ export async function getPositions() : Promise<any[]> {
         })
         return ret
     } catch (error) {
-        console.log(`Error: ${error}`)
+        console.error(`Error: ${error}`)
         // TODO: probably need to inform the client
         return []
     }
