@@ -1,5 +1,7 @@
 FROM node:alpine AS builder
 
+ENV BUILD="true"
+
 WORKDIR /app
 
 COPY package*.json ./
