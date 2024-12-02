@@ -19,6 +19,10 @@ type Stat = {
 }
 
 export async function getStats() : Promise<any[]> {
+    if (typeof window === 'undefined') {
+        // Skip execution during build
+        return []
+    }
     try {
         console.log(`URL: ${URL}`)
         console.info(`request ${URL}/v1/order/profit/ with target audience ${URL}`);
@@ -54,6 +58,10 @@ type Event = {
 }
 
 export async function getEvents() : Promise<any[]> {
+    if (typeof window === 'undefined') {
+        // Skip execution during build
+        return []
+    }
     try {
         console.log(`URL: ${URL}`)
         console.info(`request ${URL}/v1/order/feed/ with target audience ${URL}`);
@@ -91,6 +99,10 @@ export type Position = {
 }
 
 export async function getPositions() : Promise<any[]> {
+    if (typeof window === 'undefined') {
+        // Skip execution during build
+        return []
+    }
     try {
         console.log(`URL: ${URL}`)
         console.info(`request ${URL}/v1/order/position/ with target audience ${URL}`);
