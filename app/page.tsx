@@ -15,7 +15,7 @@ export default function Home() {
         <Stat />
       </div>
 
-      <hr className="border-t border-gray-200" />
+      {/* <hr className="border-t border-gray-200" />
 
       <div className="pt-14 pb-14">
         <Position />
@@ -25,7 +25,7 @@ export default function Home() {
 
       <div className="pt-20 pb-20 flex justify-center">
         <Feed />
-      </div>
+      </div> */}
 
       <hr className="border-t border-gray-200" />
 

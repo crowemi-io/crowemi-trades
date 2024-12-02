@@ -4,6 +4,9 @@ import { ArrowUpCircleIcon, ArrowDownCircleIcon, ArrowDownIcon, ArrowUpIcon } fr
 import dotenv from 'dotenv'
 
 import { GoogleAuth } from 'google-auth-library';
+
+import got from 'got';
+
 const auth = new GoogleAuth();
 
 dotenv.config()
@@ -23,13 +26,30 @@ export async function getStats(isBuild: boolean) : Promise<any[]> {
         console.log('Skip execution during build')
         return []
     }
+    const serviceRequestOptions: {
+        method: string,
+        headers: {
+            'Content-Type': string,
+            'Authorization'?: string
+        }
+    } = {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'text/plain',
+        }
+    };
+
     try {
         console.log(`URL: ${URL}`)
         console.info(`request ${URL}/v1/order/profit/ with target audience ${URL}`);
         const client = await auth.getIdTokenClient(`${URL}/`);
+        const clientHeaders = await client.getRequestHeaders();
+        serviceRequestOptions.headers['Authorization'] = clientHeaders['Authorization'];
+        
         const url = `${URL}/v1/order/profit/`;
-        const res = await client.request({url});
-        const data: Stat = res.data as Stat
+        const res = await got(url, serviceRequestOptions);
+        
+        const data: Stat = JSON.parse(res.body) as Stat
         console.info(data);  
 
         return [
