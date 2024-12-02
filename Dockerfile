@@ -1,5 +1,6 @@
 FROM node:alpine AS builder
 
+# annoying var to ensure we don't run gcp auth during next build
 ENV BUILD="true"
 
 WORKDIR /app
