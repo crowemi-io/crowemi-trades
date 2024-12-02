@@ -45,6 +45,10 @@ resource "google_cloud_run_v2_service" "this" {
           }
         }
       }
+      env {
+        name = "BUILD"
+        value = "false"
+      }
     }
     scaling {
       max_instance_count = 1

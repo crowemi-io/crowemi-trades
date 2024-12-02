@@ -1,9 +1,8 @@
 import { getPositions, Position } from "./actions"
 
+const people = await getPositions(process.env.BUILD === 'true')
 
 export default async function getPosition() {
-
-  const people = await getPositions((typeof window === 'undefined'))
 
   return (
     <div className="px-4 sm:px-6 lg:px-8">

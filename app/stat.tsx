@@ -1,9 +1,9 @@
 import { getStats } from './actions'
 
+const stats = await getStats(process.env.BUILD === 'true')
 
 export default async function Stat() {
     
-    const stats = await getStats((typeof window === 'undefined'))
     return (
         <dl className="mx-auto grid grid-cols-1 gap-px bg-gray-900/5 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (
