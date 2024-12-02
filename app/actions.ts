@@ -37,7 +37,7 @@ export async function getStats(isBuild: boolean) : Promise<any[]> {
         console.info(`request ${URL}/v1/order/profit/ with target audience ${URL}`);
         const client = await auth.getIdTokenClient(`${URL}/`);
         const clientHeaders = await client.getRequestHeaders();
-        serviceRequestOptions.headers['Authorization'] = clientHeaders['Authorization'];
+        serviceRequestOptions.headers['Authorization'] = clientHeaders['Authorization'] || '';
         
         const url = `${URL}/v1/order/profit/`;
         const res = await got(url, serviceRequestOptions);
