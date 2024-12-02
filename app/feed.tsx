@@ -1,12 +1,13 @@
 import { getEvents } from './actions'
 
-const timeline = await getEvents()
 
 function classNames(...classes:any[]) {
   return classes.filter(Boolean).join(' ')
 }
 
-export default function Feed() {
+export default async function Feed() {
+  const timeline = await getEvents((typeof window === 'undefined'))
+
   return (
     <div className="flow-root">
       <ul role="list" className="-mb-8">

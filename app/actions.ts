@@ -18,9 +18,9 @@ type Stat = {
     symbols: Object
 }
 
-export async function getStats() : Promise<any[]> {
-    if (typeof window === 'undefined') {
-        // Skip execution during build
+export async function getStats(isBuild: boolean) : Promise<any[]> {
+    if (isBuild) {
+        console.log('Skip execution during build')
         return []
     }
     try {
@@ -57,9 +57,9 @@ type Event = {
     type: string
 }
 
-export async function getEvents() : Promise<any[]> {
-    if (typeof window === 'undefined') {
-        // Skip execution during build
+export async function getEvents(isBuild: boolean) : Promise<any[]> {
+    if (isBuild) {
+        console.log('Skip execution during build')
         return []
     }
     try {
@@ -98,9 +98,9 @@ export type Position = {
     iconBackground: string
 }
 
-export async function getPositions() : Promise<any[]> {
-    if (typeof window === 'undefined') {
-        // Skip execution during build
+export async function getPositions(isBuild: boolean) : Promise<any[]> {
+    if (isBuild) {
+        console.log('Skip execution during build')
         return []
     }
     try {
