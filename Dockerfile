@@ -1,8 +1,5 @@
 FROM node:alpine AS builder
 
-ARG GAC
-ENV GOOGLE_APPLICATION_CREDENTIALS ${GAC}
-
 WORKDIR /app
 
 COPY package*.json ./
