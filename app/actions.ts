@@ -4,8 +4,7 @@ import { ArrowUpCircleIcon, ArrowDownCircleIcon, ArrowDownIcon, ArrowUpIcon } fr
 import dotenv from 'dotenv'
 
 import { GoogleAuth } from 'google-auth-library';
-
-import got from 'got';
+import got, { OptionsInit } from 'got';
 
 const auth = new GoogleAuth();
 
@@ -26,13 +25,7 @@ export async function getStats(isBuild: boolean) : Promise<any[]> {
         console.log('Skip execution during build')
         return []
     }
-    const serviceRequestOptions: {
-        method: string,
-        headers: {
-            'Content-Type': string,
-            'Authorization'?: string
-        }
-    } = {
+    const serviceRequestOptions: OptionsInit = {
         method: 'GET',
         headers: {
             'Content-Type': 'text/plain',
