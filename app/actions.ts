@@ -25,25 +25,28 @@ export async function getStats(isBuild: boolean) : Promise<any[]> {
         console.log('Skip execution during build')
         return []
     }
-    const serviceRequestOptions: OptionsInit = {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'text/plain',
-        }
-    };
 
     try {
         console.log(`URL: ${URL}`)
         console.info(`request ${URL}/v1/order/profit/ with target audience ${URL}`);
         const client = await auth.getIdTokenClient(`${URL}/`);
         const clientHeaders = await client.getRequestHeaders();
-        serviceRequestOptions.headers['Authorization'] = clientHeaders['Authorization'] || '';
+
+        const response = await fetch(`${URL}/v1/order/profit/`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'text/plain',
+                'Authorization': clientHeaders['Authorization'] || ''
+            }
+        })
         
-        const url = `${URL}/v1/order/profit/`;
-        const res = await got(url, serviceRequestOptions);
-        
-        const data: Stat = JSON.parse(res.body) as Stat
-        console.info(data);  
+        if (!response.ok) {
+            console.error(`HTTP error! status: ${response.status}`)
+            return []
+        }
+
+        const data: Stat = await response.json()
+        console.info(data)
 
         return [
             { name: 'Today', value: `$${data.today.toFixed(2)}` },
@@ -54,7 +57,7 @@ export async function getStats(isBuild: boolean) : Promise<any[]> {
     } catch (error) {
         console.log(`Error: ${error}`)
         // TODO: probably need to inform the client
-        return [ { name: "Error", value: error} ]
+        return []
     }
 }
 
@@ -78,12 +81,28 @@ export async function getEvents(isBuild: boolean) : Promise<any[]> {
     try {
         console.log(`URL: ${URL}`)
         console.info(`request ${URL}/v1/order/feed/ with target audience ${URL}`);
+        console.log(`URL: ${URL}`)
+        console.info(`request ${URL}/v1/order/feed/ with target audience ${URL}`);
         const client = await auth.getIdTokenClient(`${URL}/`);
-        const url = `${URL}/v1/order/feed/`;
-        const res = await client.request({url});
-        const ret: Event[] = JSON.parse(res.data as string)
+        const clientHeaders = await client.getRequestHeaders();
 
-        ret.forEach((event: Event) => {
+        const response = await fetch(`${URL}/v1/order/feed/`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'text/plain',
+                'Authorization': clientHeaders['Authorization'] || ''
+            }
+        })
+        
+        if (!response.ok) {
+            console.error(`HTTP error! status: ${response.status}`)
+            return []
+        }
+
+        const data: Event[] = await JSON.parse(response.json())
+        console.info(data)
+
+        data.forEach((event: Event) => {
             if (event.type == 'sell') {
                 event.icon = ArrowDownCircleIcon
                 event.iconBackground = 'bg-red-700'
@@ -93,7 +112,7 @@ export async function getEvents(isBuild: boolean) : Promise<any[]> {
                 event.iconBackground = 'bg-green-700'
             }
         })
-        return ret
+        return data
     } catch(error) {    
         console.error(`Error: ${error}`)
         return []
@@ -119,12 +138,28 @@ export async function getPositions(isBuild: boolean) : Promise<any[]> {
     try {
         console.log(`URL: ${URL}`)
         console.info(`request ${URL}/v1/order/position/ with target audience ${URL}`);
+        console.log(`URL: ${URL}`)
+        console.info(`request ${URL}/v1/order/position/ with target audience ${URL}`);
         const client = await auth.getIdTokenClient(`${URL}/`);
-        const url = `${URL}/v1/order/position/`;
-        const res = await client.request({url});
-        const ret: Position[] = res.data as Position[]
+        const clientHeaders = await client.getRequestHeaders();
 
-        ret.forEach((position: Position) => {
+        const response = await fetch(`${URL}/v1/order/position/`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'text/plain',
+                'Authorization': clientHeaders['Authorization'] || ''
+            }
+        })
+        
+        if (!response.ok) {
+            console.error(`HTTP error! status: ${response.status}`)
+            return []
+        }
+
+        const data: Position[] = await response.json()
+        console.info(data)
+
+        data.forEach((position: Position) => {
             if (position.unrealized_pl < 0) {
                 position.icon = ArrowDownIcon
                 position.iconBackground = 'bg-red-400'
@@ -134,7 +169,7 @@ export async function getPositions(isBuild: boolean) : Promise<any[]> {
                 position.iconBackground = 'bg-blue-400'
             }
         })
-        return ret
+        return data
     } catch (error) {
         console.error(`Error: ${error}`)
         // TODO: probably need to inform the client
