@@ -99,10 +99,12 @@ export async function getEvents(isBuild: boolean) : Promise<any[]> {
             return []
         }
 
-        const data: Event[] = await JSON.parse(response.json())
-        console.info(data)
+        const data = await response.json()
+        const ret: Event[] = JSON.parse(data)
+        
+        console.info(ret)
 
-        data.forEach((event: Event) => {
+        ret.forEach((event: Event) => {
             if (event.type == 'sell') {
                 event.icon = ArrowDownCircleIcon
                 event.iconBackground = 'bg-red-700'
@@ -112,7 +114,7 @@ export async function getEvents(isBuild: boolean) : Promise<any[]> {
                 event.iconBackground = 'bg-green-700'
             }
         })
-        return data
+        return ret
     } catch(error) {    
         console.error(`Error: ${error}`)
         return []
