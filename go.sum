@@ -4,6 +4,8 @@ github.com/alpacahq/alpaca-trade-api-go/v3 v3.8.1 h1:EVN6EYDqGCiKv6n36X0/jiGfHxE
 github.com/alpacahq/alpaca-trade-api-go/v3 v3.8.1/go.mod h1:BM5f01Jh+mmcEK/Y5kS6XsQojVSuUM8HL4MQgrRtyis=
 github.com/crowemi-io/crowemi-go-utils v0.0.0-20250428124915-01f3320b5936 h1:BUUSc3y6JPsroLjyuYY6QlVyvHEpQJPG5FrpV9vzOPc=
 github.com/crowemi-io/crowemi-go-utils v0.0.0-20250428124915-01f3320b5936/go.mod h1:uQv5XNf9hejEAX01J18fhZZmFu50XrphZF6gp2OLnZA=
+github.com/crowemi-io/crowemi-go-utils v0.0.0-20250502140139-6fca6e79ea37 h1:wvNU+PPzVC5/zlaPPIiboEddyLtIEoTqkqfvnNDQgAY=
+github.com/crowemi-io/crowemi-go-utils v0.0.0-20250502140139-6fca6e79ea37/go.mod h1:d2IOvknGZf2JOOEjmpNJaKexUzyfQ9wVfSxBLgm9pGQ=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/google/go-cmp v0.7.0 h1:wk8382ETsv4JYUZwIsn6YpYiWiBsYLSJiTsyBybVuN8=

@@ -4,7 +4,7 @@ go 1.23.1
 
 require (
 	github.com/alpacahq/alpaca-trade-api-go/v3 v3.8.1
-	github.com/crowemi-io/crowemi-go-utils v0.0.0-20250428124915-01f3320b5936
+	github.com/crowemi-io/crowemi-go-utils v0.0.0-20250502140139-6fca6e79ea37
 )
 
 require (
