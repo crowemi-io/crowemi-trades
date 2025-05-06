@@ -1,6 +1,11 @@
 package crowemi_trades
 
-import "time"
+import (
+	"context"
+	"time"
+
+	"github.com/crowemi-io/crowemi-go-utils/db"
+)
 
 type Order struct {
 	ID               string    `bson:"_id"`
@@ -24,4 +29,13 @@ type Order struct {
 	SellPrice        float64   `bson:"sell_price,omitempty"`
 	SellAtUTC        time.Time `bson:"sell_at_utc,omitempty"`
 	SellSession      string    `bson:"sell_session,omitempty"`
+}
+
+func GetOrders(mongoClient *db.MongoClient, filters []db.MongoFilter) ([]Order, error) {
+	// Implement the logic to get allowable investment
+	res, err := db.GetMany[Order](context.TODO(), mongoClient, "orders", filters)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
 }

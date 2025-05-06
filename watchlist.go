@@ -1,6 +1,11 @@
 package crowemi_trades
 
-import "time"
+import (
+	"context"
+	"time"
+
+	"github.com/crowemi-io/crowemi-go-utils/db"
+)
 
 type Watchlist struct {
 	ID               string    `bson:"_id, omitempty"`
@@ -12,8 +17,17 @@ type Watchlist struct {
 	IsActive         bool      `bson:"is_active, omitempty"`
 	ExtendedHours    bool      `bson:"extended_hours, omitempty"`
 	BatchSize        int       `bson:"batch_size, omitempty"`
-	AllowedBatches   int       `bson:"allowed_batches, omitempty"`
+	AllowedBatches   int       `bson:"total_allowed_batches, omitempty"`
 	Type             string    `bson:"type, omitempty"`
 	SubType          string    `bson:"sub_type, omitempty"`
-	IsSuspended      bool      `bson:"is_suspended, omitempty"`
+	IsSuspended      bool      `bson:"is_suspend, omitempty"`
+}
+
+func GetWatchlists(mongoClient *db.MongoClient) ([]Watchlist, error) {
+	// Implement the logic to get allowable investment
+	res, err := db.GetMany[Watchlist](context.TODO(), mongoClient, "watchlists", nil)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
 }
