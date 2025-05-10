@@ -1,4 +1,4 @@
-package crowemi_trades
+package trader
 
 import "time"
 

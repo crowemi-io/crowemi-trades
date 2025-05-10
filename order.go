@@ -1,10 +1,14 @@
-package crowemi_trades
+package trader
 
 import (
 	"context"
+	"fmt"
 	"time"
 
+	alpaca "github.com/alpacahq/alpaca-trade-api-go/v3/alpaca"
 	"github.com/crowemi-io/crowemi-go-utils/db"
+
+	"github.com/shopspring/decimal"
 )
 
 type Order struct {
@@ -31,11 +35,37 @@ type Order struct {
 	SellSession      string    `bson:"sell_session,omitempty"`
 }
 
-func GetOrders(mongoClient *db.MongoClient, filters []db.MongoFilter) ([]Order, error) {
-	// Implement the logic to get allowable investment
+func GetOrders(mongoClient *db.MongoClient, filters []db.MongoFilter) (*[]Order, error) {
 	res, err := db.GetMany[Order](context.TODO(), mongoClient, "orders", filters)
 	if err != nil {
 		return nil, err
 	}
 	return res, nil
+}
+
+func Rebalance(client *alpaca.Client, freeCapital *float64, portfolio *Portfolio) {
+	for _, group := range portfolio.AllocationGroup {
+		for _, allocation := range group.Allocation {
+			// PercentDiff * Total Cost Basis ?
+			// this is the total expected free capital available for symbol allocation
+			symbolOutstandingCapital := ((portfolio.CurrentCostBasis + *freeCapital) * allocation.Percent) - allocation.Current.CostBasis
+			fmt.Printf("Outstanding capital %s: %f\n", allocation.Symbol, symbolOutstandingCapital)
+			if symbolOutstandingCapital > 1.00 { //TODO: find a better approach here
+				notional := decimal.NewFromFloat(symbolOutstandingCapital).Round(2)
+				fmt.Printf("Purchasing %s $%s\n", allocation.Symbol, notional)
+
+				req := alpaca.PlaceOrderRequest{
+					Symbol:      allocation.Symbol,
+					Notional:    &notional,
+					Side:        alpaca.Buy,
+					Type:        alpaca.Market,
+					TimeInForce: alpaca.Day,
+				}
+				_, err := client.PlaceOrder(req)
+				if err != nil {
+					print(err)
+				}
+			}
+		}
+	}
 }

@@ -1,3 +1,3 @@
-package crowemi_trades
+package trader
 
 // write a test for the watchlist

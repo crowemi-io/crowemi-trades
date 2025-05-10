@@ -1,4 +1,4 @@
-package crowemi_trades
+package trader
 
 import (
 	"context"
@@ -23,11 +23,30 @@ type Watchlist struct {
 	IsSuspended      bool      `bson:"is_suspend, omitempty"`
 }
 
-func GetWatchlists(mongoClient *db.MongoClient) ([]Watchlist, error) {
+func GetWatchlists(mongoClient *db.MongoClient) (*[]Watchlist, error) {
 	// Implement the logic to get allowable investment
 	res, err := db.GetMany[Watchlist](context.TODO(), mongoClient, "watchlists", nil)
 	if err != nil {
 		return nil, err
 	}
 	return res, nil
+}
+
+func GetOutstandingCapital(watchlists *[]Watchlist, openOrders *[]Order) float64 {
+	var ret float64
+	for _, w := range *watchlists {
+		if w.IsActive && !w.IsSuspended {
+			if w.Type == "stock" {
+				// when the total number of open orders is less than the allowed batches
+				// we need to account for the potential outstanding orders
+				if len(*openOrders) < w.AllowedBatches {
+					outstanding := float64(w.BatchSize * (w.AllowedBatches - len(*openOrders)))
+					// then subtract the outstanding orders from the free capital
+					ret += outstanding
+				}
+
+			}
+		}
+	}
+	return ret
 }
