@@ -24,7 +24,6 @@ type Watchlist struct {
 }
 
 func GetWatchlists(mongoClient *db.MongoClient) (*[]Watchlist, error) {
-	// Implement the logic to get allowable investment
 	res, err := db.GetMany[Watchlist](context.TODO(), mongoClient, "watchlists", nil)
 	if err != nil {
 		return nil, err

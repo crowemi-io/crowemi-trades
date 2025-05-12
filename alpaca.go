@@ -30,7 +30,7 @@ func (alpaca *Alpaca) GetCash() (float64, error) {
 	}
 	cashValue, exact := alpacaAccount.Cash.Float64()
 	if !exact {
-		// log warning
+		// return cashValue!
 		return cashValue, nil
 	}
 	return cashValue, nil
