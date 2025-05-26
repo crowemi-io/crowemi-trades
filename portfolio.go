@@ -37,7 +37,7 @@ type CurrentAllocation struct {
 }
 
 func GetPortfolio(mongoClient *db.MongoClient, alpacaClient *Alpaca, filters []db.MongoFilter, includeCurrentAllocation bool) ([]Portfolio, error) {
-	res, err := db.GetMany[Portfolio](context.TODO(), mongoClient, "portfolios", filters)
+	res, err := db.GetMany[Portfolio](context.TODO(), mongoClient, "portfolios", filters, nil)
 	if err != nil {
 		return nil, err
 	}

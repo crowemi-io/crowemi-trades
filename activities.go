@@ -1,14 +1,31 @@
 package trader
 
-import "time"
+import (
+	"time"
+
+	"cloud.google.com/go/civil"
+)
 
 type Activities struct {
-	ActivityType    string    `json:"activity_type" omitempty:"true"`
-	ActivitySubType string    `json:"activity_subtype" omitempty:"true"`
-	Date            time.Time `json:"date" omitempty:"true"`
-	NetAmount       float64   `json:"net_amount" omitempty:"true"`
-	Description     string    `json:"description" omitempty:"true"`
-	Status          string    `json:"status" omitempty:"true"`
-	Symbol          string    `json:"symbol" omitempty:"true"`
-	PerShareAmount  float64   `json:"per_share_amount" omitempty:"true"`
+	ID              string     `bson:"id"`
+	ActivityType    string     `bson:"activity_type"`
+	TransactionTime time.Time  `bson:"transaction_time"`
+	Type            string     `bson:"type"`
+	Price           float64    `bson:"price"`
+	Qty             float64    `bson:"qty"`
+	Side            string     `bson:"side"`
+	Symbol          string     `bson:"symbol"`
+	LeavesQty       float64    `bson:"leaves_qty"`
+	CumQty          float64    `bson:"cum_qty"`
+	Date            civil.Date `bson:"date"`
+	NetAmount       float64    `bson:"net_amount"`
+	Description     string     `bson:"description"`
+	PerShareAmount  float64    `bson:"per_share_amount"`
+	OrderID         string     `bson:"order_id"`
+	OrderStatus     string     `bson:"order_status"`
+	Status          string     `bson:"status"`
+}
+
+func ProcessActivities() {
+
 }

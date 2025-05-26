@@ -36,7 +36,7 @@ type Order struct {
 }
 
 func GetOrders(mongoClient *db.MongoClient, filters []db.MongoFilter) (*[]Order, error) {
-	res, err := db.GetMany[Order](context.TODO(), mongoClient, "orders", filters)
+	res, err := db.GetMany[Order](context.TODO(), mongoClient, "orders", filters, nil)
 	if err != nil {
 		return nil, err
 	}

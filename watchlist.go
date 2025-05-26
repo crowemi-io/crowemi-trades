@@ -24,7 +24,7 @@ type Watchlist struct {
 }
 
 func GetWatchlists(mongoClient *db.MongoClient) (*[]Watchlist, error) {
-	res, err := db.GetMany[Watchlist](context.TODO(), mongoClient, "watchlists", nil)
+	res, err := db.GetMany[Watchlist](context.TODO(), mongoClient, "watchlists", nil, nil)
 	if err != nil {
 		return nil, err
 	}

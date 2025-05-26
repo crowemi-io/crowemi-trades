@@ -7,15 +7,17 @@ import (
 	"github.com/crowemi-io/crowemi-go-utils/cloud"
 	"github.com/crowemi-io/crowemi-go-utils/config"
 	"github.com/crowemi-io/crowemi-go-utils/db"
+	"github.com/crowemi-io/crowemi-go-utils/log"
 )
 
 type Config struct {
-	Alpaca            config.Alpaca `json:"alpaca"`
-	AlpacaClient      *Alpaca
-	Crowemi           config.Crowemi `json:"crowemi"`
-	MongoClient       *db.MongoClient
-	GoogleCloud       *config.GoogleCloud `json:"google_cloud"`
-	GoogleCloudClient *cloud.GoogleCloudClient
+	Alpaca       config.Alpaca `json:"alpaca"`
+	AlpacaClient *Alpaca
+	Crowemi      config.Crowemi `json:"crowemi"`
+	MongoClient  *db.MongoClient
+	GoogleCloud  *config.GoogleCloud `json:"google_cloud"`
+	GcpClient    *cloud.GcpClient
+	Logger       *log.Logger
 }
 
 func Bootstrap() (*Config, error) {
@@ -37,12 +39,12 @@ func Bootstrap() (*Config, error) {
 	}
 	c.MongoClient = &mongoClient
 
-	googleCloudClient := cloud.GoogleCloudClient{
-		App:     c.Crowemi.ClientName,
-		Session: "",
-		Config:  c.GoogleCloud,
+	gcpClient, err := cloud.NewGcpClient(c.Crowemi.ClientName, c.GoogleCloud)
+	if err != nil {
+		return nil, err
 	}
-	c.GoogleCloudClient = &googleCloudClient
+	c.GcpClient = gcpClient
+	c.Logger = &log.Logger{GcpClient: c.GcpClient}
 
 	return c, nil
 }
