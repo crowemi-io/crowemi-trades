@@ -1,0 +1,20 @@
+{
+    "high_dividend" : {
+        "percentage": 0.3
+    },
+    "cypto": {
+        "percentage": 0.1
+    },
+    "reit": {
+        "percentage": 0.25
+    },
+    "app": {
+        "percentage": 0.1
+    },
+    "dividend": {
+        "percentage": 0.15
+    },
+    "cash": {
+        "percentage": 0.1
+    }
+}

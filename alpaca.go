@@ -2,11 +2,9 @@ package crowemi_trades
 
 import (
 	"github.com/alpacahq/alpaca-trade-api-go/v3/alpaca"
-	"github.com/crowemi-io/crowemi-go-utils/config"
 )
 
 type Alpaca struct {
-	Config config.Alpaca
 	Client *alpaca.Client
 }
 
