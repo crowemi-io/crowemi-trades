@@ -37,11 +37,20 @@ type Crowemi struct {
 	DatabaseURI     string            `json:"database_uri" omitempty:"true"`
 }
 
+type Runtime struct {
+	HTTPListenAddr      string `json:"http_listen_addr" omitempty:"true"`
+	AccountSyncInterval string `json:"account_sync_interval" omitempty:"true"`
+	TaskTimeout         string `json:"task_timeout" omitempty:"true"`
+	StreamReconnectMin  string `json:"stream_reconnect_min" omitempty:"true"`
+	StreamReconnectMax  string `json:"stream_reconnect_max" omitempty:"true"`
+}
+
 type Config struct {
 	Alpaca      Alpaca      `json:"alpaca"`
 	Crowemi     Crowemi     `json:"crowemi"`
 	GoogleCloud GoogleCloud `json:"google_cloud"`
-	Firestore   firestore.Client
+	Runtime     Runtime     `json:"runtime"`
+	Firestore   *firestore.Client
 	Logger      kitlog.Logger
 }
 
@@ -66,11 +75,30 @@ func Bootstrap(configPath string) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	config.Firestore = *firestoreClient
+	config.Firestore = firestoreClient
 	// logger
 	logger := kitlog.NewLogfmtLogger(kitlog.NewSyncWriter(os.Stderr))
 	logger = kitlog.With(logger, "ts", kitlog.DefaultTimestampUTC, "caller", kitlog.DefaultCaller)
 	config.Logger = logger
+	applyRuntimeDefaults(&config)
 
 	return &config, nil
+}
+
+func applyRuntimeDefaults(config *Config) {
+	if config.Runtime.HTTPListenAddr == "" {
+		config.Runtime.HTTPListenAddr = ":8080"
+	}
+	if config.Runtime.AccountSyncInterval == "" {
+		config.Runtime.AccountSyncInterval = "5m"
+	}
+	if config.Runtime.TaskTimeout == "" {
+		config.Runtime.TaskTimeout = "30s"
+	}
+	if config.Runtime.StreamReconnectMin == "" {
+		config.Runtime.StreamReconnectMin = "1s"
+	}
+	if config.Runtime.StreamReconnectMax == "" {
+		config.Runtime.StreamReconnectMax = "30s"
+	}
 }
