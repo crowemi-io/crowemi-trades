@@ -15,6 +15,7 @@ import (
 	"github.com/crowemi-io/crowemi-trades/internal/db"
 	"github.com/crowemi-io/crowemi-trades/internal/runtime"
 	"github.com/crowemi-io/crowemi-trades/internal/scheduler"
+	task "github.com/crowemi-io/crowemi-trades/internal/scheduler/tasks"
 	"github.com/crowemi-io/crowemi-trades/internal/stream"
 )
 
@@ -65,25 +66,31 @@ func main() {
 		log.Fatal(err)
 	}
 
-	accountSyncTask := &scheduler.AccountSyncTask{
+	accountSyncTask := &task.AccountSyncTask{
 		AlpacaClient: alpacaClient,
 		FirestoreDB:  firestoreDB,
 		Logger:       c.Logger,
 	}
 	accountSyncTask.CronSchedule = c.Runtime.Scheduler.ScheduleForTask(accountSyncTask.Name())
-
-	activitySyncTask := &scheduler.ActivitySyncTask{
+	activitySyncTask := &task.ActivitySyncTask{
 		AlpacaClient: alpacaClient,
 		FirestoreDB:  firestoreDB,
 		Logger:       c.Logger,
 	}
 	activitySyncTask.CronSchedule = c.Runtime.Scheduler.ScheduleForTask(activitySyncTask.Name())
+	corporateActionSyncTask := &task.CorporateActionSyncTask{
+		AlpacaClient: alpacaClient,
+		FirestoreDB:  firestoreDB,
+		Logger:       c.Logger,
+	}
+	corporateActionSyncTask.CronSchedule = c.Runtime.Scheduler.ScheduleForTask(corporateActionSyncTask.Name())
 
 	schedulerRunner := &scheduler.Runner{
 		Logger: c.Logger,
 		Tasks: []scheduler.Task{
 			accountSyncTask,
 			activitySyncTask,
+			corporateActionSyncTask,
 		},
 		TaskTimeout: taskTimeout,
 	}
