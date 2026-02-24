@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	kitlog "github.com/go-kit/log"
@@ -11,7 +12,7 @@ import (
 
 type Task interface {
 	Name() string
-	Interval() time.Duration
+	Schedule() string
 	Run(context.Context) error
 }
 
@@ -30,55 +31,69 @@ func (r *Runner) Run(ctx context.Context) error {
 	group, groupCtx := errgroup.WithContext(ctx)
 	for _, task := range r.Tasks {
 		task := task
-		if task.Interval() <= 0 {
-			_ = level.Warn(r.Logger).Log("component", "scheduler", "task", task.Name(), "msg", "skip task with non-positive interval")
-			continue
+
+		expr, err := ParseCron(task.Schedule())
+		if err != nil {
+			return fmt.Errorf("scheduler: task %q: %w", task.Name(), err)
 		}
 
+		_ = level.Info(r.Logger).Log(
+			"component", "scheduler",
+			"task", task.Name(),
+			"schedule", task.Schedule(),
+			"msg", "registered task",
+		)
+
 		group.Go(func() error {
-			return r.runTaskLoop(groupCtx, task)
+			return r.runTaskLoop(groupCtx, task, expr)
 		})
 	}
 
 	return group.Wait()
 }
 
-func (r *Runner) runTaskLoop(ctx context.Context, task Task) error {
-	ticker := time.NewTicker(task.Interval())
-	defer ticker.Stop()
-
+func (r *Runner) runTaskLoop(ctx context.Context, task Task, expr CronExpr) error {
 	for {
+		next := expr.Next(time.Now())
+		if next.IsZero() {
+			_ = level.Error(r.Logger).Log("component", "scheduler", "task", task.Name(), "msg", "no next fire time found")
+			return nil
+		}
+
+		timer := time.NewTimer(time.Until(next))
 		select {
 		case <-ctx.Done():
+			timer.Stop()
 			return nil
-		case <-ticker.C:
-			runCtx := ctx
-			cancel := func() {}
-			if r.TaskTimeout > 0 {
-				runCtx, cancel = context.WithTimeout(ctx, r.TaskTimeout)
-			}
+		case <-timer.C:
+		}
 
-			start := time.Now()
-			err := task.Run(runCtx)
-			cancel()
+		runCtx := ctx
+		cancel := func() {}
+		if r.TaskTimeout > 0 {
+			runCtx, cancel = context.WithTimeout(ctx, r.TaskTimeout)
+		}
 
-			duration := time.Since(start).Milliseconds()
-			if err != nil {
-				_ = level.Error(r.Logger).Log(
-					"component", "scheduler",
-					"task", task.Name(),
-					"duration_ms", duration,
-					"err", err,
-				)
-				continue
-			}
+		start := time.Now()
+		err := task.Run(runCtx)
+		cancel()
 
-			_ = level.Info(r.Logger).Log(
+		duration := time.Since(start).Milliseconds()
+		if err != nil {
+			_ = level.Error(r.Logger).Log(
 				"component", "scheduler",
 				"task", task.Name(),
 				"duration_ms", duration,
-				"msg", "task completed",
+				"err", err,
 			)
+			continue
 		}
+
+		_ = level.Info(r.Logger).Log(
+			"component", "scheduler",
+			"task", task.Name(),
+			"duration_ms", duration,
+			"msg", "task completed",
+		)
 	}
 }

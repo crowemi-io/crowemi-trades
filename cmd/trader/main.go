@@ -52,10 +52,6 @@ func main() {
 		Handler: mux,
 	}
 
-	accountSyncInterval, err := time.ParseDuration(c.Runtime.AccountSyncInterval)
-	if err != nil {
-		log.Fatal(err)
-	}
 	taskTimeout, err := time.ParseDuration(c.Runtime.TaskTimeout)
 	if err != nil {
 		log.Fatal(err)
@@ -69,14 +65,17 @@ func main() {
 		log.Fatal(err)
 	}
 
+	accountSyncTask := &scheduler.AccountSyncTask{
+		AlpacaClient: alpacaClient,
+		FirestoreDB:  firestoreDB,
+		Logger:       c.Logger,
+	}
+	accountSyncTask.CronSchedule = c.Runtime.Scheduler.ScheduleForTask(accountSyncTask.Name())
+
 	schedulerRunner := &scheduler.Runner{
 		Logger: c.Logger,
 		Tasks: []scheduler.Task{
-			&scheduler.AccountSyncTask{
-				AlpacaClient: alpacaClient,
-				FirestoreDB:  firestoreDB,
-				Every:        accountSyncInterval,
-			},
+			accountSyncTask,
 		},
 		TaskTimeout: taskTimeout,
 	}

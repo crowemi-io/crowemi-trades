@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"os"
+	"strings"
 
 	kitlog "github.com/go-kit/log"
 
@@ -37,12 +38,30 @@ type Crowemi struct {
 	DatabaseURI     string            `json:"database_uri" omitempty:"true"`
 }
 
+type Scheduler struct {
+	ScheduleTasks []SchedulerTask `json:"scheduler_tasks" omitempty:"true"`
+}
+
+type SchedulerTask struct {
+	Name     string `json:"name" omitempty:"true"`
+	Schedule string `json:"schedule" omitempty:"true"`
+}
+
+func (s Scheduler) ScheduleForTask(taskName string) string {
+	for _, task := range s.ScheduleTasks {
+		if strings.EqualFold(strings.TrimSpace(task.Name), strings.TrimSpace(taskName)) {
+			return strings.TrimSpace(task.Schedule)
+		}
+	}
+	return ""
+}
+
 type Runtime struct {
-	HTTPListenAddr      string `json:"http_listen_addr" omitempty:"true"`
-	AccountSyncInterval string `json:"account_sync_interval" omitempty:"true"`
-	TaskTimeout         string `json:"task_timeout" omitempty:"true"`
-	StreamReconnectMin  string `json:"stream_reconnect_min" omitempty:"true"`
-	StreamReconnectMax  string `json:"stream_reconnect_max" omitempty:"true"`
+	HTTPListenAddr     string    `json:"http_listen_addr" omitempty:"true"`
+	Scheduler          Scheduler `json:"scheduler" omitempty:"true"`
+	TaskTimeout        string    `json:"task_timeout" omitempty:"true"`
+	StreamReconnectMin string    `json:"stream_reconnect_min" omitempty:"true"`
+	StreamReconnectMax string    `json:"stream_reconnect_max" omitempty:"true"`
 }
 
 type Config struct {
@@ -88,9 +107,6 @@ func Bootstrap(configPath string) (*Config, error) {
 func applyRuntimeDefaults(config *Config) {
 	if config.Runtime.HTTPListenAddr == "" {
 		config.Runtime.HTTPListenAddr = ":8080"
-	}
-	if config.Runtime.AccountSyncInterval == "" {
-		config.Runtime.AccountSyncInterval = "5m"
 	}
 	if config.Runtime.TaskTimeout == "" {
 		config.Runtime.TaskTimeout = "30s"
