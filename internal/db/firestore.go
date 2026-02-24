@@ -127,6 +127,38 @@ func Update[T Document](ctx context.Context, fs *Firestore, collection string, d
 	return err
 }
 
+func GetLatest[T Document](ctx context.Context, fs *Firestore, collection, orderByField string) (T, error) {
+	var zero T
+	if fs == nil || fs.Client == nil {
+		return zero, errors.New("firestore client is not initialized")
+	}
+
+	iter := fs.Client.Collection(collection).
+		OrderBy(orderByField, firestore.Desc).
+		Limit(1).
+		Documents(ctx)
+	defer iter.Stop()
+
+	snapshot, err := iter.Next()
+	if errors.Is(err, iterator.Done) {
+		return zero, nil
+	}
+	if err != nil {
+		return zero, err
+	}
+
+	doc, err := newDocument[T]()
+	if err != nil {
+		return zero, err
+	}
+	if err := snapshot.DataTo(doc); err != nil {
+		return zero, err
+	}
+
+	doc.SetID(snapshot.Ref.ID)
+	return doc, nil
+}
+
 func Delete(ctx context.Context, fs *Firestore, collection, id string) error {
 	if fs == nil || fs.Client == nil {
 		return errors.New("firestore client is not initialized")

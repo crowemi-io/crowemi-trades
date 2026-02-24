@@ -72,10 +72,18 @@ func main() {
 	}
 	accountSyncTask.CronSchedule = c.Runtime.Scheduler.ScheduleForTask(accountSyncTask.Name())
 
+	activitySyncTask := &scheduler.ActivitySyncTask{
+		AlpacaClient: alpacaClient,
+		FirestoreDB:  firestoreDB,
+		Logger:       c.Logger,
+	}
+	activitySyncTask.CronSchedule = c.Runtime.Scheduler.ScheduleForTask(activitySyncTask.Name())
+
 	schedulerRunner := &scheduler.Runner{
 		Logger: c.Logger,
 		Tasks: []scheduler.Task{
 			accountSyncTask,
+			activitySyncTask,
 		},
 		TaskTimeout: taskTimeout,
 	}
