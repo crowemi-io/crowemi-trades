@@ -13,6 +13,8 @@ import (
 	"github.com/crowemi-io/crowemi-trades/internal/api"
 	"github.com/crowemi-io/crowemi-trades/internal/config"
 	"github.com/crowemi-io/crowemi-trades/internal/db"
+	"github.com/crowemi-io/crowemi-trades/internal/notifier"
+	"github.com/crowemi-io/crowemi-trades/internal/notifier/telegram"
 	"github.com/crowemi-io/crowemi-trades/internal/runtime"
 	"github.com/crowemi-io/crowemi-trades/internal/scheduler"
 	task "github.com/crowemi-io/crowemi-trades/internal/scheduler/tasks"
@@ -44,6 +46,17 @@ func main() {
 		Logger:      c.Logger,
 		FirestoreDB: firestoreDB,
 		Alpaca:      alpacaClient,
+	}
+
+	if c.Notifier.Telegram != nil && c.Notifier.Telegram.BotToken != "" && c.Notifier.Telegram.ChatID != 0 {
+		tg, err := telegram.New(telegram.Config{
+			BotToken: c.Notifier.Telegram.BotToken,
+			ChatID:   c.Notifier.Telegram.ChatID,
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
+		handler.Notifier = notifier.NewMulti(tg)
 	}
 
 	mux := http.NewServeMux()
@@ -84,12 +97,18 @@ func main() {
 		Logger:       c.Logger,
 	}
 	orderSyncTask.CronSchedule = c.Runtime.Scheduler.ScheduleForTask(orderSyncTask.Name())
-	// corporateActionSyncTask := &task.CorporateActionSyncTask{
-	// 	AlpacaClient: alpacaClient,
-	// 	FirestoreDB:  firestoreDB,
-	// 	Logger:       c.Logger,
-	// }
-	// corporateActionSyncTask.CronSchedule = c.Runtime.Scheduler.ScheduleForTask(corporateActionSyncTask.Name())
+	positionSyncTask := &task.PositionSyncTask{
+		AlpacaClient: alpacaClient,
+		FirestoreDB:  firestoreDB,
+		Logger:       c.Logger,
+	}
+	positionSyncTask.CronSchedule = c.Runtime.Scheduler.ScheduleForTask(positionSyncTask.Name())
+	corporateActionSyncTask := &task.CorporateActionSyncTask{
+		AlpacaClient: alpacaClient,
+		FirestoreDB:  firestoreDB,
+		Logger:       c.Logger,
+	}
+	corporateActionSyncTask.CronSchedule = c.Runtime.Scheduler.ScheduleForTask(corporateActionSyncTask.Name())
 
 	schedulerRunner := &scheduler.Runner{
 		Logger: c.Logger,
@@ -97,7 +116,8 @@ func main() {
 			accountSyncTask,
 			activitySyncTask,
 			orderSyncTask,
-			// corporateActionSyncTask,
+			positionSyncTask,
+			corporateActionSyncTask,
 		},
 		TaskTimeout: taskTimeout,
 	}

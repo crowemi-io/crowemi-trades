@@ -1,13 +1,9 @@
 package notifier
 
+import "context"
+
+// Notifier sends a text message to one or more notification backends
+// (e.g. Telegram, Discord, WhatsApp). Implementations may be backend-specific.
 type Notifier interface {
-	Notify(message string) error
-}
-
-type SlackNotifier struct {
-	WebhookURL string
-}
-
-func (n *SlackNotifier) Notify(message string) error {
-	return nil
+	Notify(ctx context.Context, message string) error
 }

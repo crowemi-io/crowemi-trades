@@ -113,6 +113,41 @@ func List[T Document](ctx context.Context, fs *Firestore, collection string) ([]
 	return docs, nil
 }
 
+func ListWhere[T Document](ctx context.Context, fs *Firestore, collection, whereField, op string, whereValue interface{}) ([]T, error) {
+	if fs == nil || fs.Client == nil {
+		return nil, errors.New("firestore client is not initialized")
+	}
+
+	iter := fs.Client.Collection(collection).
+		Where(whereField, op, whereValue).
+		Documents(ctx)
+	defer iter.Stop()
+
+	var docs []T
+	for {
+		snapshot, err := iter.Next()
+		if errors.Is(err, iterator.Done) {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		doc, err := newDocument[T]()
+		if err != nil {
+			return nil, err
+		}
+		if err := snapshot.DataTo(doc); err != nil {
+			return nil, err
+		}
+
+		doc.SetID(snapshot.Ref.ID)
+		docs = append(docs, doc)
+	}
+
+	return docs, nil
+}
+
 func Update[T Document](ctx context.Context, fs *Firestore, collection string, doc T) error {
 	if fs == nil || fs.Client == nil {
 		return errors.New("firestore client is not initialized")
@@ -124,6 +159,32 @@ func Update[T Document](ctx context.Context, fs *Firestore, collection string, d
 	}
 
 	_, err := fs.Client.Collection(collection).Doc(id).Set(ctx, doc, firestore.MergeAll)
+	return err
+}
+
+func Upsert[T Document](ctx context.Context, fs *Firestore, collection string, doc T) error {
+	if fs == nil || fs.Client == nil {
+		return errors.New("firestore client is not initialized")
+	}
+
+	id := doc.GetID()
+	if id == "" {
+		return errors.New("document id is required for upsert")
+	}
+
+	_, err := fs.Client.Collection(collection).Doc(id).Set(ctx, doc)
+	return err
+}
+
+func SetFields(ctx context.Context, fs *Firestore, collection, id string, fields map[string]interface{}) error {
+	if fs == nil || fs.Client == nil {
+		return errors.New("firestore client is not initialized")
+	}
+	if id == "" {
+		return errors.New("document id is required for set fields")
+	}
+
+	_, err := fs.Client.Collection(collection).Doc(id).Set(ctx, fields, firestore.MergeAll)
 	return err
 }
 

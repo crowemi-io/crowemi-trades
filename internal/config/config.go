@@ -64,10 +64,20 @@ type Runtime struct {
 	StreamReconnectMax string    `json:"stream_reconnect_max" omitempty:"true"`
 }
 
+type Notifier struct {
+	Telegram *Telegram `json:"telegram" omitempty:"true"`
+}
+
+type Telegram struct {
+	BotToken string `json:"bot_token" omitempty:"true"`
+	ChatID   int64  `json:"chat_id" omitempty:"true"`
+}
+
 type Config struct {
 	Alpaca      Alpaca      `json:"alpaca"`
 	Crowemi     Crowemi     `json:"crowemi"`
 	GoogleCloud GoogleCloud `json:"google_cloud"`
+	Notifier    Notifier    `json:"notifier" omitempty:"true"`
 	Runtime     Runtime     `json:"runtime"`
 	Firestore   *firestore.Client
 	Logger      kitlog.Logger

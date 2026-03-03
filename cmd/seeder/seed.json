@@ -1,20 +1,18 @@
 {
     "high_dividend" : {
-        "percentage": 0.3,
+        "percentage": 0.25,
         "symbols": {
             "SPYI": 0.25,
             "QQQI": 0.25,
             "JEPQ": 0.20,
             "JEPI": 0.20,
             "IYRI": 0.10
-
         }
     },
     "cypto": {
-        "percentage": 0.1,
+        "percentage": 0.075,
         "symbols": {
-            "BTC": 0.6,
-            "BTCI": 0.3,
+            "BTC": 0.9,
             "MSTR": 0.1
         }
     },
@@ -31,9 +29,11 @@
     "app": {
         "percentage": 0.1,
         "symbols": {
-            "PFE": 0.4,
-            "T": 0.4,
-            "BAC": 0.2
+            "PFE": 0.2,
+            "T": 0.2,
+            "KO": 0.2,
+            "F": 0.2,
+            "MO": 0.2
         }
     },
     "dividend": {
@@ -44,5 +44,11 @@
     },
     "cash": {
         "percentage": 0.1
+    },
+    "growth_harvest" : {
+        "percentage": 0.125,
+        "symbols": {
+            "QQQM": 1.0
+        }
     }
 }
