@@ -18,3 +18,7 @@ variable "env" {
   description = "Environment (e.g., dev/prod)"
   type        = string
 }
+variable "docker_image_tag" {
+  description = "value"
+  type = string
+}

@@ -9,8 +9,8 @@ COPY . .
 RUN go install -v ./...
 
 FROM golang:1.25-alpine
-COPY --from=build /go/bin/service /go/service
+COPY --from=build /go/bin/trader /go/trader
 
-EXPOSE 8001
+EXPOSE 8080
 
-CMD ["sh"]
+CMD ["/go/trader"]
