@@ -7,7 +7,7 @@ resource "google_cloud_run_v2_service" "this" {
   name                 = local.service
   project              = var.gcp_project_id
   location             = var.gcp_region
-  ingress              = "INGRESS_TRAFFIC_ALL"
+  ingress              = "INGRESS_TRAFFIC_INTERNAL_ONLY"
   launch_stage         = "BETA"
   default_uri_disabled = true
   template {
