@@ -11,7 +11,7 @@ resource "google_cloud_run_v2_service" "this" {
   default_uri_disabled = true
   template {
     containers {
-      image = "us-west1-docker.pkg.dev/${var.gcp_project_id}/${lvar.gcp_project_id}/${local.service}:${var.docker_image_tag}"
+      image = "us-west1-docker.pkg.dev/${var.gcp_project_id}/${var.gcp_project_id}/${local.service}:${var.docker_image_tag}"
       env {
         name = "CONFIG"
         value_source {
