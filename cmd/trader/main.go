@@ -57,6 +57,9 @@ func main() {
 			log.Fatal(err)
 		}
 		handler.Notifier = notifier.NewMulti(tg)
+		if err := handler.Notifier.Notify(ctx, "crowemi-trades started"); err != nil {
+			c.Logger.Log("msg", "start notification failed", "err", err)
+		}
 	}
 
 	mux := http.NewServeMux()
@@ -127,7 +130,6 @@ func main() {
 		ReconnectMin: streamReconnectMin,
 		ReconnectMax: streamReconnectMax,
 	}
-
 	app := &runtime.App{
 		Logger:    c.Logger,
 		Server:    server,

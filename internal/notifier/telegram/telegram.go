@@ -1,11 +1,14 @@
 package telegram
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/http"
+	"time"
 
 	"github.com/crowemi-io/crowemi-trades/internal/notifier"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 // Config holds settings for the Telegram notifier.
@@ -16,31 +19,60 @@ type Config struct {
 	ChatID   int64  `json:"chat_id"`
 }
 
-// client wraps the Telegram Bot API and implements notifier.Notifier.
+// client calls the Telegram Bot API over HTTP and implements notifier.Notifier.
 type client struct {
-	bot    *tgbotapi.BotAPI
-	chatID int64
+	baseURL    string
+	chatID     int64
+	httpClient *http.Client
 }
 
 // New returns a Notifier that sends messages to the configured Telegram chat/channel.
-// The bot is created and the token is validated at construction time.
 func New(cfg Config) (notifier.Notifier, error) {
 	if cfg.BotToken == "" {
 		return nil, fmt.Errorf("telegram: bot_token is required")
 	}
-	bot, err := tgbotapi.NewBotAPI(cfg.BotToken)
-	if err != nil {
-		return nil, fmt.Errorf("telegram: create bot: %w", err)
-	}
-	return &client{bot: bot, chatID: cfg.ChatID}, nil
+	baseURL := "https://api.telegram.org/bot" + cfg.BotToken
+	return &client{
+		baseURL: baseURL,
+		chatID:  cfg.ChatID,
+		httpClient: &http.Client{
+			Timeout: 15 * time.Second,
+		},
+	}, nil
+}
+
+// sendMessageResponse is the JSON shape returned by the Telegram sendMessage API.
+type sendMessageResponse struct {
+	OK          bool   `json:"ok"`
+	Description string `json:"description,omitempty"`
 }
 
 // Notify sends the message to the configured chat/channel.
 func (c *client) Notify(ctx context.Context, message string) error {
-	msg := tgbotapi.NewMessage(c.chatID, message)
-	_, err := c.bot.Send(msg)
+	reqBody := struct {
+		ChatID int64  `json:"chat_id"`
+		Text   string `json:"text"`
+	}{c.chatID, message}
+	body, err := json.Marshal(reqBody)
+	if err != nil {
+		return fmt.Errorf("telegram: encode request: %w", err)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/sendMessage", bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("telegram: create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("telegram: send: %w", err)
+	}
+	defer resp.Body.Close()
+	var apiResp sendMessageResponse
+	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
+		return fmt.Errorf("telegram: decode response: %w", err)
+	}
+	if !apiResp.OK {
+		return fmt.Errorf("telegram: api error: %s", apiResp.Description)
 	}
 	return nil
 }

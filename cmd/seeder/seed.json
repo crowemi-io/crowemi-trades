@@ -10,10 +10,9 @@
         }
     },
     "cypto": {
-        "percentage": 0.075,
+        "percentage": 0.05,
         "symbols": {
-            "BTC": 0.9,
-            "MSTR": 0.1
+            "BTC": 1.0
         }
     },
     "reit": {
@@ -29,11 +28,19 @@
     "app": {
         "percentage": 0.1,
         "symbols": {
-            "PFE": 0.2,
             "T": 0.2,
+            "PFE": 0.2,
             "KO": 0.2,
             "F": 0.2,
             "MO": 0.2
+        }
+    },
+    "growth_harvest" : {
+        "percentage": 0.15,
+        "symbols": {
+            "SPY": 0.5,
+            "MSFT": 0.25,
+            "AVGO": 0.25
         }
     },
     "dividend": {
@@ -44,11 +51,5 @@
     },
     "cash": {
         "percentage": 0.1
-    },
-    "growth_harvest" : {
-        "percentage": 0.125,
-        "symbols": {
-            "QQQM": 1.0
-        }
     }
 }
