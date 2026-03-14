@@ -124,18 +124,39 @@ func main() {
 		},
 		TaskTimeout: taskTimeout,
 	}
+	// Initialize SymbolManager for per-symbol websocket routing
+	symbolMgr := stream.NewSymbolManager(c.Logger)
+
+	// Load portfolio symbols from Firestore (use "default" or read from config)
+	portfolioID := "default" // TODO: make configurable via config
+	if err := symbolMgr.LoadSymbols(ctx, firestoreDB.Client, portfolioID); err != nil {
+		c.Logger.Log("msg", "failed to load portfolio symbols", "err", err, "portfolio_id", portfolioID)
+		// Continue without per-symbol routing if loading fails
+		symbolMgr = nil
+	}
+
 	streamConsumer := &stream.TradeUpdatesConsumer{
 		Logger:       c.Logger,
 		Streamer:     alpacaClient,
 		ReconnectMin: streamReconnectMin,
 		ReconnectMax: streamReconnectMax,
+		SymbolMgr:    symbolMgr, // inject the manager for per-symbol routing
 	}
+
 	app := &runtime.App{
 		Logger:    c.Logger,
 		Server:    server,
 		Scheduler: schedulerRunner,
 		Stream:    streamConsumer,
 	}
+
+	// Ensure SymbolManager is shut down on exit
+	defer func() {
+		if symbolMgr != nil {
+			symbolMgr.Shutdown()
+		}
+	}()
+
 	if err := app.Run(ctx); err != nil {
 		log.Fatal(err)
 	}
