@@ -30,19 +30,32 @@ func NewSymbolManager(logger kitlog.Logger) *SymbolManager {
 }
 
 // LoadSymbols loads portfolio symbols from Firestore and starts goroutines for each
-func (m *SymbolManager) LoadSymbols(ctx context.Context, fs *db.Firestore, portfolioID string) error {
-	m.logger.Log("msg", "loading portfolio symbols", "portfolio_id", portfolioID)
+func (m *SymbolManager) LoadSymbols(ctx context.Context, fs *db.Firestore, portfolioID string, allocationCategory ...string) error {
+	m.logger.Log("msg", "loading portfolio symbols", "portfolio_id", portfolioID, "category", fmt.Sprintf("%v", allocationCategory))
 
 	portfolio, err := db.Get[*models.Portfolio](ctx, fs, db.CollectionPortfolios, portfolioID)
 	if err != nil {
 		return fmt.Errorf("failed to fetch portfolio: %w", err)
 	}
 
-	// Extract all symbols from allocations
+	// Extract symbols from allocations
 	symbolSet := make(map[string]bool)
-	for _, alloc := range portfolio.Allocations {
-		for symbol := range alloc.Symbols {
-			symbolSet[symbol] = true
+	
+	if len(allocationCategory) > 0 && allocationCategory[0] != "" {
+		// Filter for specific allocation category (app node)
+		if alloc, exists := portfolio.Allocations[allocationCategory[0]]; exists {
+			for symbol := range alloc.Symbols {
+				symbolSet[symbol] = true
+			}
+		} else {
+			m.logger.Log("msg", "allocation category not found", "category", allocationCategory[0])
+		}
+	} else {
+		// Load all symbols from all allocations (backward compatibility)
+		for _, alloc := range portfolio.Allocations {
+			for symbol := range alloc.Symbols {
+				symbolSet[symbol] = true
+			}
 		}
 	}
 
@@ -92,7 +105,7 @@ func (m *SymbolManager) Shutdown() {
 	// Close all channels to signal goroutines to stop
 	for symbol, ch := range m.symbols {
 		close(ch)
-		level.Debug(m.logger).Log("msg", "closed channel for symbol", "symbol", symbol)
+		level.Info(m.logger).Log("msg", "closed channel for symbol", "symbol", symbol)
 	}
 
 	// Wait for all goroutines to finish
