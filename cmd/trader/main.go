@@ -19,6 +19,8 @@ import (
 	"github.com/crowemi-io/crowemi-trades/internal/scheduler"
 	task "github.com/crowemi-io/crowemi-trades/internal/scheduler/tasks"
 	"github.com/crowemi-io/crowemi-trades/internal/stream"
+
+	ct "github.com/crowemi-io/crowemi-trades"
 )
 
 func main() {
@@ -105,6 +107,14 @@ func main() {
 	}
 	corporateActionSyncTask.CronSchedule = c.Runtime.Scheduler.ScheduleForTask(corporateActionSyncTask.Name())
 
+	alpacaWrapper := &ct.Alpaca{Client: alpacaClient, Notifier: handler.Notifier}
+	rebalanceTask := &task.RebalanceTask{
+		Alpaca:       alpacaWrapper,
+		FirestoreDB:  firestoreDB,
+		Logger:       c.Logger,
+		CronSchedule: c.Runtime.Scheduler.ScheduleForTask("rebalance"),
+	}
+
 	schedulerRunner := &scheduler.Runner{
 		Logger: c.Logger,
 		Tasks: []scheduler.Task{
@@ -113,6 +123,7 @@ func main() {
 			orderSyncTask,
 			positionSyncTask,
 			corporateActionSyncTask,
+			rebalanceTask,
 		},
 		TaskTimeout: taskTimeout,
 	}

@@ -39,6 +39,13 @@ func Compute(ctx context.Context, client *alpaca.Client, fs *db.Firestore, portf
 		return nil, err
 	}
 
+	rebalanceAllocations := make(map[string]models.Allocation)
+	for name, alloc := range portfolio.Allocations {
+		if alloc.Rebalance {
+			rebalanceAllocations[name] = alloc
+		}
+	}
+
 	totalCapital := account.PortfolioValue.InexactFloat64()
 
 	positionValues := make(map[string]float64, len(positions))
@@ -48,7 +55,16 @@ func Compute(ctx context.Context, client *alpaca.Client, fs *db.Firestore, portf
 		}
 	}
 
-	return compute(totalCapital, portfolio.Allocations, positionValues), nil
+	result := compute(totalCapital, rebalanceAllocations, positionValues)
+	// Only return actions for symbols in rebalance categories (exclude sell-unallocated for other categories).
+	filtered := result.Actions[:0]
+	for _, a := range result.Actions {
+		if a.Category != "" {
+			filtered = append(filtered, a)
+		}
+	}
+	result.Actions = filtered
+	return result, nil
 }
 
 // compute is the pure computation extracted for testability.

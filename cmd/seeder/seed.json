@@ -1,5 +1,6 @@
 {
     "high_dividend" : {
+        "rebalance": true,
         "percentage": 0.25,
         "symbols": {
             "SPYI": 0.25,
@@ -10,12 +11,14 @@
         }
     },
     "cypto": {
+        "rebalance": false,
         "percentage": 0.05,
         "symbols": {
             "BTC": 1.0
         }
     },
     "reit": {
+        "rebalance": true,
         "percentage": 0.25,
         "symbols": {
             "DOC": 0.2,
@@ -26,6 +29,7 @@
         }
     },
     "app": {
+        "rebalance": false,
         "percentage": 0.1,
         "symbols": {
             "T": 0.2,
@@ -36,6 +40,7 @@
         }
     },
     "growth_harvest" : {
+        "rebalance": false,
         "percentage": 0.15,
         "symbols": {
             "SPY": 0.5,
@@ -44,12 +49,14 @@
         }
     },
     "dividend": {
+        "rebalance": false,
         "percentage": 0.15,
         "symbols": {
             "SCHD": 1.0
         }
     },
     "cash": {
+        "rebalance": false,
         "percentage": 0.1
     }
 }

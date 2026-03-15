@@ -3,6 +3,7 @@ package models
 import "encoding/json"
 
 type Allocation struct {
+	Rebalance  bool               `firestore:"rebalance" json:"rebalance"`
 	Percentage float64            `firestore:"percentage" json:"percentage"`
 	Symbols    map[string]float64 `firestore:"symbols,omitempty" json:"symbols"`
 }
