@@ -11,10 +11,8 @@ resource "google_cloud_run_v2_service" "this" {
   launch_stage         = "BETA"
   default_uri_disabled = true
 
-  # Service-level min instances (template.scaling does not control min in v2 API)
   scaling {
     min_instance_count = 1
-    max_instance_count = 1
   }
 
   template {
