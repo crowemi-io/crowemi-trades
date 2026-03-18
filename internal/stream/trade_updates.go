@@ -53,7 +53,7 @@ func (c *TradeUpdatesConsumer) Run(ctx context.Context) error {
 					"event", tu.Event,
 					"event_id", tu.EventID,
 					"order_id", tu.Order.ID,
-					"symbol", tu.Symbol,
+					"symbol", tu.Order.Symbol,
 					"msg", "trade update received",
 				)
 			}

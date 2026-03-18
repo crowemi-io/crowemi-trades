@@ -57,6 +57,7 @@ func (s Scheduler) ScheduleForTask(taskName string) string {
 }
 
 type Runtime struct {
+	PortfolioID        string    `json:"portfolio_id" omitempty:"true"`
 	HTTPListenAddr     string    `json:"http_listen_addr" omitempty:"true"`
 	Scheduler          Scheduler `json:"scheduler" omitempty:"true"`
 	TaskTimeout        string    `json:"task_timeout" omitempty:"true"`

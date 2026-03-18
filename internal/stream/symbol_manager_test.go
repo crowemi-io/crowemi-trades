@@ -2,13 +2,12 @@ package stream
 
 import (
 	"context"
-	"sync/atomic"
+	"errors"
 	"testing"
 	"time"
 
 	"github.com/alpacahq/alpaca-trade-api-go/v3/alpaca"
 	kitlog "github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 
 	"github.com/crowemi-io/crowemi-trades/internal/db"
 	"github.com/crowemi-io/crowemi-trades/internal/models"
@@ -19,40 +18,41 @@ type MockFirestore struct {
 	portfolios map[string]*models.Portfolio
 }
 
-func (m *MockFirestore) GetPortfolio(id string) (*models.Portfolio, error) {
+func (m *MockFirestore) GetPortfolio(ctx context.Context, portfolioID string) (*models.Portfolio, error) {
 	if m.portfolios == nil {
-		return nil, db.ErrDocumentNotFound
+		return nil, errDocumentNotFound
 	}
-	p, exists := m.portfolios[id]
+	p, exists := m.portfolios[portfolioID]
 	if !exists {
-		return nil, db.ErrDocumentNotFound
+		return nil, errDocumentNotFound
 	}
 	return p, nil
 }
 
-// MockPortfolioDB implements the portfolio fetching for testing
-func (m *MockFirestore) Get[T any](ctx context.Context, fs *db.Firestore, collection string, id string) (T, error) {
+// GetFromMock is a generic helper for tests that need to fetch a document from MockFirestore.
+// Go disallows type parameters on methods, so this is a package-level function.
+func GetFromMock[T any](m *MockFirestore, ctx context.Context, collection, id string) (T, error) {
 	var zero T
 	if collection != db.CollectionPortfolios {
-		return zero, db.ErrDocumentNotFound
+		return zero, errDocumentNotFound
 	}
-
 	if m.portfolios == nil {
-		return zero, db.ErrDocumentNotFound
+		return zero, errDocumentNotFound
 	}
-
 	p, exists := m.portfolios[id]
 	if !exists {
-		return zero, db.ErrDocumentNotFound
+		return zero, errDocumentNotFound
 	}
-
-	// Type assertion and return
-	if portfolio, ok := interface{}(p).(T); ok {
+	if portfolio, ok := any(p).(T); ok {
 		return portfolio, nil
 	}
-
-	return zero, db.ErrInvalidType
+	return zero, errInvalidType
 }
+
+var (
+	errDocumentNotFound = errors.New("document not found")
+	errInvalidType      = errors.New("invalid type")
+)
 
 func newTestLogger(t *testing.T) kitlog.Logger {
 	logger := kitlog.NewLogfmtLogger(kitlog.NewSyncWriter(&testWriter{t}))
@@ -105,7 +105,7 @@ func TestSymbolManager_LoadSymbols(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	err := mgr.LoadSymbols(ctx, &db.Firestore{Client: mockFS}, "default")
+	err := mgr.LoadSymbols(ctx, mockFS, "default")
 	if err != nil {
 		t.Fatalf("Failed to load symbols: %v", err)
 	}
@@ -147,18 +147,14 @@ func TestSymbolManager_OnMessage(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	if err := mgr.LoadSymbols(ctx, &db.Firestore{Client: mockFS}, "default"); err != nil {
+	if err := mgr.LoadSymbols(ctx, mockFS, "default"); err != nil {
 		t.Fatalf("Failed to load symbols: %v", err)
 	}
 
-	// Send a trade update for AAPL
+	// Send a trade update for AAPL (symbol lives on Order in alpaca.TradeUpdate)
 	tu := alpaca.TradeUpdate{
-		Symbol: "AAPL",
-		Event:  "fill",
-		Fill: &alpaca.Fill{
-			Price: 150.25,
-			Qty:   10,
-		},
+		Event: "fill",
+		Order: alpaca.Order{Symbol: "AAPL"},
 	}
 
 	mgr.OnMessage(tu)
@@ -167,8 +163,8 @@ func TestSymbolManager_OnMessage(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	// Send message for unknown symbol (should not panic)
-	tu.Symbol = "UNKNOWN"
-	mgr.OnMessage(tu)
+	tuUnknown := alpaca.TradeUpdate{Event: "fill", Order: alpaca.Order{Symbol: "UNKNOWN"}}
+	mgr.OnMessage(tuUnknown)
 
 	time.Sleep(50 * time.Millisecond)
 }
@@ -192,13 +188,13 @@ func TestSymbolManager_Shutdown(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	if err := mgr.LoadSymbols(ctx, &db.Firestore{Client: mockFS}, "default"); err != nil {
+	if err := mgr.LoadSymbols(ctx, mockFS, "default"); err != nil {
 		t.Fatalf("Failed to load symbols: %v", err)
 	}
 
 	// Send some messages
 	for i := 0; i < 5; i++ {
-		mgr.OnMessage(alpaca.TradeUpdate{Symbol: "AAPL", Event: "fill"})
+		mgr.OnMessage(alpaca.TradeUpdate{Event: "fill", Order: alpaca.Order{Symbol: "AAPL"}})
 	}
 
 	// Shutdown should not block and should stop goroutines
@@ -235,14 +231,13 @@ func TestSymbolManager_ChannelBackpressure(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	if err := mgr.LoadSymbols(ctx, &db.Firestore{Client: mockFS}, "default"); err != nil {
+	if err := mgr.LoadSymbols(ctx, mockFS, "default"); err != nil {
 		t.Fatalf("Failed to load symbols: %v", err)
 	}
 
 	// Send more messages than channel can handle (will drop some)
-	droppedCount := int32(0)
 	for i := 0; i < 100; i++ {
-		mgr.OnMessage(alpaca.TradeUpdate{Symbol: "AAPL", Event: "fill"})
+		mgr.OnMessage(alpaca.TradeUpdate{Event: "fill", Order: alpaca.Order{Symbol: "AAPL"}})
 	}
 
 	time.Sleep(100 * time.Millisecond)
@@ -276,7 +271,7 @@ func TestSymbolManager_GetSymbols(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	if err := mgr.LoadSymbols(ctx, &db.Firestore{Client: mockFS}, "default"); err != nil {
+	if err := mgr.LoadSymbols(ctx, mockFS, "default"); err != nil {
 		t.Fatalf("Failed to load symbols: %v", err)
 	}
 

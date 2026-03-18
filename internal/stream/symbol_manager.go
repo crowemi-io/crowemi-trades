@@ -8,10 +8,23 @@ import (
 	"github.com/alpacahq/alpaca-trade-api-go/v3/alpaca"
 	kitlog "github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/shopspring/decimal"
 
 	"github.com/crowemi-io/crowemi-trades/internal/db"
 	"github.com/crowemi-io/crowemi-trades/internal/models"
 )
+
+// PortfolioGetter fetches a portfolio by ID (used by LoadSymbols and test mocks).
+type PortfolioGetter interface {
+	GetPortfolio(ctx context.Context, portfolioID string) (*models.Portfolio, error)
+}
+
+// FirestorePortfolioGetter adapts *db.Firestore to PortfolioGetter.
+type FirestorePortfolioGetter struct{ FS *db.Firestore }
+
+func (g *FirestorePortfolioGetter) GetPortfolio(ctx context.Context, portfolioID string) (*models.Portfolio, error) {
+	return db.Get[*models.Portfolio](ctx, g.FS, db.CollectionPortfolios, portfolioID)
+}
 
 // SymbolManager manages per-symbol routing of trade updates to dedicated goroutines
 type SymbolManager struct {
@@ -29,11 +42,11 @@ func NewSymbolManager(logger kitlog.Logger) *SymbolManager {
 	}
 }
 
-// LoadSymbols loads portfolio symbols from Firestore and starts goroutines for each
-func (m *SymbolManager) LoadSymbols(ctx context.Context, fs *db.Firestore, portfolioID string, allocationCategory ...string) error {
+// LoadSymbols loads portfolio symbols from the given getter and starts goroutines for each
+func (m *SymbolManager) LoadSymbols(ctx context.Context, getter PortfolioGetter, portfolioID string, allocationCategory ...string) error {
 	m.logger.Log("msg", "loading portfolio symbols", "portfolio_id", portfolioID, "category", fmt.Sprintf("%v", allocationCategory))
 
-	portfolio, err := db.Get[*models.Portfolio](ctx, fs, db.CollectionPortfolios, portfolioID)
+	portfolio, err := getter.GetPortfolio(ctx, portfolioID)
 	if err != nil {
 		return fmt.Errorf("failed to fetch portfolio: %w", err)
 	}
@@ -75,13 +88,14 @@ func (m *SymbolManager) LoadSymbols(ctx context.Context, fs *db.Firestore, portf
 
 // OnMessage routes incoming TradeUpdate to the correct symbol's goroutine
 func (m *SymbolManager) OnMessage(tu alpaca.TradeUpdate) {
+	symbol := tu.Order.Symbol
 	m.mu.RLock()
-	ch, exists := m.symbols[tu.Symbol]
+	ch, exists := m.symbols[symbol]
 	m.mu.RUnlock()
 
 	if !exists {
 		// Symbol not in portfolio, log globally for debugging
-		level.Debug(m.logger).Log("msg", "trade update for unknown symbol", "symbol", tu.Symbol)
+		level.Debug(m.logger).Log("msg", "trade update for unknown symbol", "symbol", symbol)
 		return
 	}
 
@@ -91,7 +105,7 @@ func (m *SymbolManager) OnMessage(tu alpaca.TradeUpdate) {
 		// Message sent successfully
 	default:
 		// Channel full, log warning and drop message
-		level.Warn(m.logger).Log("msg", "symbol channel full, dropping message", "symbol", tu.Symbol)
+		level.Warn(m.logger).Log("msg", "symbol channel full, dropping message", "symbol", symbol)
 	}
 }
 
@@ -122,41 +136,37 @@ func (m *SymbolManager) startSymbolGoroutine(ctx context.Context, symbol string,
 		defer m.wg.Done()
 
 		for tu := range ch {
-			// Log current price and symbol as per issue requirement
+			// Log using TradeUpdate fields: Order, Price, Qty (no Fill/Outstanding/Status structs in SDK)
 			switch tu.Event {
 			case "fill":
-				if tu.Fill != nil {
+				if tu.Price != nil || tu.Qty != nil {
 					level.Info(m.logger).Log(
 						"component", "stream",
 						"symbol", symbol,
 						"event", tu.Event,
-						"price", tu.Fill.Price,
-						"qty", tu.Fill.Qty,
-						"side", tu.Fill.Side,
+						"price", ptrDecimalStr(tu.Price),
+						"qty", ptrDecimalStr(tu.Qty),
+						"side", tu.Order.Side,
 						"msg", "trade fill received",
 					)
 				}
 			case "outstanding":
-				if tu.Outstanding != nil {
-					level.Info(m.logger).Log(
-						"component", "stream",
-						"symbol", symbol,
-						"event", tu.Event,
-						"bid_price", tu.Outstanding.BidPrice,
-						"ask_price", tu.Outstanding.AskPrice,
-						"msg", "quote update received",
-					)
-				}
+				level.Info(m.logger).Log(
+					"component", "stream",
+					"symbol", symbol,
+					"event", tu.Event,
+					"order_id", tu.Order.ID,
+					"msg", "outstanding order update",
+				)
 			case "status":
-				if tu.Status != nil {
-					level.Info(m.logger).Log(
-						"component", "stream",
-						"symbol", symbol,
-						"event", tu.Event,
-						"order_id", tu.Status.Order.ID,
-						"msg", "order status update",
-					)
-				}
+				level.Info(m.logger).Log(
+					"component", "stream",
+					"symbol", symbol,
+					"event", tu.Event,
+					"order_id", tu.Order.ID,
+					"order_status", tu.Order.Status,
+					"msg", "order status update",
+				)
 			default:
 				level.Debug(m.logger).Log(
 					"component", "stream",
@@ -181,4 +191,11 @@ func (m *SymbolManager) GetSymbols() []string {
 		symbols = append(symbols, symbol)
 	}
 	return symbols
+}
+
+func ptrDecimalStr(d *decimal.Decimal) string {
+	if d == nil {
+		return ""
+	}
+	return d.String()
 }

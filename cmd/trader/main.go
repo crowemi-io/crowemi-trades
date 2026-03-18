@@ -73,14 +73,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	streamReconnectMin, err := time.ParseDuration(c.Runtime.StreamReconnectMin)
-	if err != nil {
-		log.Fatal(err)
-	}
-	streamReconnectMax, err := time.ParseDuration(c.Runtime.StreamReconnectMax)
-	if err != nil {
-		log.Fatal(err)
-	}
 
 	accountSyncTask := &task.AccountSyncTask{
 		AlpacaClient: alpacaClient,
@@ -124,38 +116,38 @@ func main() {
 		},
 		TaskTimeout: taskTimeout,
 	}
-	// Initialize SymbolManager for per-symbol websocket routing
+	// Load portfolio symbols for minute bars subscription
 	symbolMgr := stream.NewSymbolManager(c.Logger)
-
-	// Load portfolio symbols from Firestore (use "default" or read from config)
-	portfolioID := "default" // TODO: make configurable via config
-	if err := symbolMgr.LoadSymbols(ctx, firestoreDB.Client, portfolioID); err != nil {
-		c.Logger.Log("msg", "failed to load portfolio symbols", "err", err, "portfolio_id", portfolioID)
-		// Continue without per-symbol routing if loading fails
+	if err := symbolMgr.LoadSymbols(ctx, &stream.FirestorePortfolioGetter{FS: firestoreDB}, c.Runtime.PortfolioID, "app"); err != nil {
+		c.Logger.Log("msg", "failed to load portfolio symbols", "err", err, "portfolio_id", c.Runtime.PortfolioID)
 		symbolMgr = nil
 	}
 
-	streamConsumer := &stream.TradeUpdatesConsumer{
-		Logger:       c.Logger,
-		Streamer:     alpacaClient,
-		ReconnectMin: streamReconnectMin,
-		ReconnectMax: streamReconnectMax,
-		SymbolMgr:    symbolMgr, // inject the manager for per-symbol routing
+	var streamRunner interface{ Run(context.Context) error }
+	if symbolMgr != nil {
+		symbols := symbolMgr.GetSymbols()
+		if len(symbols) > 0 {
+			streamRunner = &stream.MinuteBarsConsumer{
+				Logger:    c.Logger,
+				Symbols:   symbols,
+				APIKey:    c.Alpaca.APIKey,
+				APISecret: c.Alpaca.APISecretKey,
+				DataURL:   c.Alpaca.APIDataURL,
+			}
+		}
+		defer func() {
+			if symbolMgr != nil {
+				symbolMgr.Shutdown()
+			}
+		}()
 	}
 
 	app := &runtime.App{
 		Logger:    c.Logger,
 		Server:    server,
 		Scheduler: schedulerRunner,
-		Stream:    streamConsumer,
+		Stream:    streamRunner,
 	}
-
-	// Ensure SymbolManager is shut down on exit
-	defer func() {
-		if symbolMgr != nil {
-			symbolMgr.Shutdown()
-		}
-	}()
 
 	if err := app.Run(ctx); err != nil {
 		log.Fatal(err)
