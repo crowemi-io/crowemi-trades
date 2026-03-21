@@ -13,6 +13,7 @@ import (
 	"github.com/crowemi-io/crowemi-trades/internal/api"
 	"github.com/crowemi-io/crowemi-trades/internal/config"
 	"github.com/crowemi-io/crowemi-trades/internal/db"
+	"github.com/crowemi-io/crowemi-trades/internal/models"
 	"github.com/crowemi-io/crowemi-trades/internal/notifier"
 	"github.com/crowemi-io/crowemi-trades/internal/notifier/telegram"
 	"github.com/crowemi-io/crowemi-trades/internal/runtime"
@@ -64,16 +65,28 @@ func main() {
 		}
 	}
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("POST /account/process", handler.ProcessAccount)
-	server := &http.Server{
-		Addr:    c.Runtime.HTTPListenAddr,
-		Handler: mux,
-	}
+	// mux := http.NewServeMux()
+	// mux.HandleFunc("POST /account/process", handler.ProcessAccount)
+	// server := &http.Server{
+	// 	Addr:    c.Runtime.HTTPListenAddr,
+	// 	Handler: mux,
+	// }
 
 	taskTimeout, err := time.ParseDuration(c.Runtime.TaskTimeout)
 	if err != nil {
 		log.Fatal(err)
+	}
+	streamReconnectMin := time.Second
+	if c.Runtime.StreamReconnectMin != "" {
+		if d, err := time.ParseDuration(c.Runtime.StreamReconnectMin); err == nil {
+			streamReconnectMin = d
+		}
+	}
+	streamReconnectMax := 30 * time.Second
+	if c.Runtime.StreamReconnectMax != "" {
+		if d, err := time.ParseDuration(c.Runtime.StreamReconnectMax); err == nil {
+			streamReconnectMax = d
+		}
 	}
 
 	accountSyncTask := &task.AccountSyncTask{
@@ -127,16 +140,30 @@ func main() {
 		},
 		TaskTimeout: taskTimeout,
 	}
-	// Load portfolio symbols for minute bars subscription
-	symbolMgr := stream.NewSymbolManager(c.Logger)
-	if err := symbolMgr.LoadSymbols(ctx, &stream.FirestorePortfolioGetter{FS: firestoreDB}, c.Runtime.PortfolioID, "app"); err != nil {
-		c.Logger.Log("msg", "failed to load portfolio symbols", "err", err, "portfolio_id", c.Runtime.PortfolioID)
-		symbolMgr = nil
+	tradeUpdatesConsumer := &stream.TradeUpdatesConsumer{
+		Logger:       c.Logger,
+		Streamer:     alpacaClient,
+		ReconnectMin: streamReconnectMin,
+		ReconnectMax: streamReconnectMax,
+	}
+
+	portfolio, err := db.Get[*models.Portfolio](ctx, firestoreDB, db.CollectionPortfolios, c.Runtime.PortfolioID)
+	if err != nil {
+		c.Logger.Log("msg", "failed to load portfolio for minute bars", "err", err, "portfolio_id", c.Runtime.PortfolioID)
 	}
 
 	var streamRunner interface{ Run(context.Context) error }
-	if symbolMgr != nil {
-		symbols := symbolMgr.GetSymbols()
+	if err == nil && portfolio != nil {
+		symbolSet := make(map[string]bool)
+		if alloc, ok := portfolio.Allocations["app"]; ok {
+			for s := range alloc.Symbols {
+				symbolSet[s] = true
+			}
+		}
+		symbols := make([]string, 0, len(symbolSet))
+		for s := range symbolSet {
+			symbols = append(symbols, s)
+		}
 		if len(symbols) > 0 {
 			streamRunner = &stream.MinuteBarsConsumer{
 				Logger:    c.Logger,
@@ -146,18 +173,16 @@ func main() {
 				DataURL:   c.Alpaca.APIDataURL,
 			}
 		}
-		defer func() {
-			if symbolMgr != nil {
-				symbolMgr.Shutdown()
-			}
-		}()
+	} else if err != nil {
+		c.Logger.Log("msg", "failed to load portfolio for minute bars", "err", err, "portfolio_id", c.Runtime.PortfolioID)
 	}
 
 	app := &runtime.App{
-		Logger:    c.Logger,
-		Server:    server,
-		Scheduler: schedulerRunner,
-		Stream:    streamRunner,
+		Logger:       c.Logger,
+		Server:       nil, // TODO: add server
+		Scheduler:    schedulerRunner,
+		Stream:       streamRunner,
+		TradeUpdates: tradeUpdatesConsumer,
 	}
 
 	if err := app.Run(ctx); err != nil {

@@ -19,7 +19,6 @@ type TradeUpdatesConsumer struct {
 	Streamer     TradeUpdateStreamer
 	ReconnectMin time.Duration
 	ReconnectMax time.Duration
-	SymbolMgr    *SymbolManager // optional: for per-symbol routing
 }
 
 func (c *TradeUpdatesConsumer) Run(ctx context.Context) error {
@@ -42,21 +41,15 @@ func (c *TradeUpdatesConsumer) Run(ctx context.Context) error {
 	for {
 		err := c.Streamer.StreamTradeUpdates(ctx, func(tu alpaca.TradeUpdate) {
 			req.Since = tu.At.Add(time.Nanosecond)
-
-			// Route to SymbolManager if available for per-symbol processing
-			if c.SymbolMgr != nil {
-				c.SymbolMgr.OnMessage(tu)
-			} else {
-				// Fallback: log globally for backwards compatibility
-				_ = level.Info(c.Logger).Log(
-					"component", "stream",
-					"event", tu.Event,
-					"event_id", tu.EventID,
-					"order_id", tu.Order.ID,
-					"symbol", tu.Order.Symbol,
-					"msg", "trade update received",
-				)
-			}
+			_ = level.Info(c.Logger).Log(
+				"component", "stream",
+				"event", tu.Event,
+				"event_id", tu.EventID,
+				"order_id", tu.Order.ID,
+				"symbol", tu.Order.Symbol,
+				"status", tu.Order.Status,
+				"msg", "trade update received",
+			)
 		}, req)
 
 		if err == nil || errors.Is(err, context.Canceled) {
