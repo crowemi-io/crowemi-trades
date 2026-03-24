@@ -11,7 +11,7 @@ import (
 
 type Alpaca struct {
 	Client   *alpaca.Client
-	Notifier notifier.Notifier
+	Notifier *notifier.Notifier
 }
 
 func (alpaca *Alpaca) GetPositions() ([]alpaca.Position, error) {

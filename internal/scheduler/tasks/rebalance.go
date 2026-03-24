@@ -13,12 +13,10 @@ import (
 	ct "github.com/crowemi-io/crowemi-trades"
 )
 
-const defaultRebalanceSchedule = "0 0 * * 0"
-
 type RebalanceTask struct {
-	Alpaca      *ct.Alpaca
-	FirestoreDB *db.Firestore
-	Logger      kitlog.Logger
+	Alpaca       *ct.Alpaca
+	FirestoreDB  *db.Firestore
+	Logger       kitlog.Logger
 	CronSchedule string
 }
 
@@ -30,7 +28,7 @@ func (t *RebalanceTask) Schedule() string {
 	if t.CronSchedule != "" {
 		return t.CronSchedule
 	}
-	return defaultRebalanceSchedule
+	return "0/30 * * * *"
 }
 
 func (t *RebalanceTask) Run(ctx context.Context) error {

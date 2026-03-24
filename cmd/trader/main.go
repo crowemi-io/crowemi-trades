@@ -7,18 +7,16 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/alpacahq/alpaca-trade-api-go/v3/alpaca"
-	"github.com/crowemi-io/crowemi-trades/internal/api"
 	"github.com/crowemi-io/crowemi-trades/internal/config"
 	"github.com/crowemi-io/crowemi-trades/internal/db"
 	"github.com/crowemi-io/crowemi-trades/internal/models"
 	"github.com/crowemi-io/crowemi-trades/internal/notifier"
-	"github.com/crowemi-io/crowemi-trades/internal/notifier/telegram"
 	"github.com/crowemi-io/crowemi-trades/internal/runtime"
 	"github.com/crowemi-io/crowemi-trades/internal/scheduler"
 	task "github.com/crowemi-io/crowemi-trades/internal/scheduler/tasks"
+	api "github.com/crowemi-io/crowemi-trades/internal/server"
 	"github.com/crowemi-io/crowemi-trades/internal/stream"
 
 	ct "github.com/crowemi-io/crowemi-trades"
@@ -36,156 +34,149 @@ func main() {
 
 	c.Logger.Log("msg", "start crowemi-trades")
 
-	httpClient := &http.Client{}
-
-	alpacaClient := alpaca.NewClient(alpaca.ClientOpts{
-		APIKey:     c.Alpaca.APIKey,
-		APISecret:  c.Alpaca.APISecretKey,
-		BaseURL:    c.Alpaca.APIBaseURL,
-		HTTPClient: httpClient,
-	})
-
-	handler := &api.Handler{
-		Logger:      c.Logger,
-		FirestoreDB: firestoreDB,
-		Alpaca:      alpacaClient,
-	}
-
+	var n *notifier.Notifier = nil
 	if c.Notifier.Telegram != nil && c.Notifier.Telegram.BotToken != "" && c.Notifier.Telegram.ChatID != 0 {
-		tg, err := telegram.New(telegram.Config{
+		n, err = notifier.New(notifier.Config{
 			BotToken: c.Notifier.Telegram.BotToken,
 			ChatID:   c.Notifier.Telegram.ChatID,
 		})
 		if err != nil {
 			log.Fatal(err)
 		}
-		handler.Notifier = notifier.NewMulti(tg)
-		if err := handler.Notifier.Notify(ctx, "crowemi-trades started"); err != nil {
-			c.Logger.Log("msg", "start notification failed", "err", err)
+	}
+
+	httpClient := &http.Client{}
+	alpaca := &ct.Alpaca{
+		Client: alpaca.NewClient(alpaca.ClientOpts{
+			APIKey:     c.Alpaca.APIKey,
+			APISecret:  c.Alpaca.APISecretKey,
+			BaseURL:    c.Alpaca.APIBaseURL,
+			HTTPClient: httpClient,
+		}),
+		Notifier: n,
+	}
+	// server init
+	var ser *http.Server = nil
+	if c.Runtime.Server.Enabled {
+		handler := &api.Handler{
+			Logger:      c.Logger,
+			FirestoreDB: firestoreDB,
+			Alpaca:      alpaca,
+		}
+		mux := http.NewServeMux()
+		mux.HandleFunc("POST /account/process", handler.ProcessAccount)
+		ser = &http.Server{
+			Handler: mux,
 		}
 	}
-
-	// mux := http.NewServeMux()
-	// mux.HandleFunc("POST /account/process", handler.ProcessAccount)
-	// server := &http.Server{
-	// 	Addr:    c.Runtime.HTTPListenAddr,
-	// 	Handler: mux,
-	// }
-
-	taskTimeout, err := time.ParseDuration(c.Runtime.TaskTimeout)
-	if err != nil {
-		log.Fatal(err)
-	}
-	streamReconnectMin := time.Second
-	if c.Runtime.StreamReconnectMin != "" {
-		if d, err := time.ParseDuration(c.Runtime.StreamReconnectMin); err == nil {
-			streamReconnectMin = d
-		}
-	}
-	streamReconnectMax := 30 * time.Second
-	if c.Runtime.StreamReconnectMax != "" {
-		if d, err := time.ParseDuration(c.Runtime.StreamReconnectMax); err == nil {
-			streamReconnectMax = d
-		}
-	}
-
-	accountSyncTask := &task.AccountSyncTask{
-		AlpacaClient: alpacaClient,
-		FirestoreDB:  firestoreDB,
-		Logger:       c.Logger,
-	}
-	accountSyncTask.CronSchedule = c.Runtime.Scheduler.ScheduleForTask(accountSyncTask.Name())
-	activitySyncTask := &task.ActivitySyncTask{
-		AlpacaClient: alpacaClient,
-		FirestoreDB:  firestoreDB,
-		Logger:       c.Logger,
-	}
-	activitySyncTask.CronSchedule = c.Runtime.Scheduler.ScheduleForTask(activitySyncTask.Name())
-	orderSyncTask := &task.OrderSyncTask{
-		AlpacaClient: alpacaClient,
-		FirestoreDB:  firestoreDB,
-		Logger:       c.Logger,
-	}
-	orderSyncTask.CronSchedule = c.Runtime.Scheduler.ScheduleForTask(orderSyncTask.Name())
-	positionSyncTask := &task.PositionSyncTask{
-		AlpacaClient: alpacaClient,
-		FirestoreDB:  firestoreDB,
-		Logger:       c.Logger,
-	}
-	positionSyncTask.CronSchedule = c.Runtime.Scheduler.ScheduleForTask(positionSyncTask.Name())
-	corporateActionSyncTask := &task.CorporateActionSyncTask{
-		AlpacaClient: alpacaClient,
-		FirestoreDB:  firestoreDB,
-		Logger:       c.Logger,
-	}
-	corporateActionSyncTask.CronSchedule = c.Runtime.Scheduler.ScheduleForTask(corporateActionSyncTask.Name())
-
-	alpacaWrapper := &ct.Alpaca{Client: alpacaClient, Notifier: handler.Notifier}
-	rebalanceTask := &task.RebalanceTask{
-		Alpaca:       alpacaWrapper,
-		FirestoreDB:  firestoreDB,
-		Logger:       c.Logger,
-		CronSchedule: c.Runtime.Scheduler.ScheduleForTask("rebalance"),
-	}
-
-	schedulerRunner := &scheduler.Runner{
-		Logger: c.Logger,
-		Tasks: []scheduler.Task{
-			accountSyncTask,
-			activitySyncTask,
-			orderSyncTask,
-			positionSyncTask,
-			corporateActionSyncTask,
-			rebalanceTask,
-		},
-		TaskTimeout: taskTimeout,
-	}
-	tradeUpdatesConsumer := &stream.TradeUpdatesConsumer{
-		Logger:       c.Logger,
-		Streamer:     alpacaClient,
-		ReconnectMin: streamReconnectMin,
-		ReconnectMax: streamReconnectMax,
-	}
-
-	portfolio, err := db.Get[*models.Portfolio](ctx, firestoreDB, db.CollectionPortfolios, c.Runtime.PortfolioID)
-	if err != nil {
-		c.Logger.Log("msg", "failed to load portfolio for minute bars", "err", err, "portfolio_id", c.Runtime.PortfolioID)
-	}
-
-	var streamRunner interface{ Run(context.Context) error }
-	if err == nil && portfolio != nil {
-		symbolSet := make(map[string]bool)
-		if alloc, ok := portfolio.Allocations["app"]; ok {
-			for s := range alloc.Symbols {
-				symbolSet[s] = true
+	// scheduler init
+	var sch *scheduler.Runner = nil
+	if c.Runtime.Scheduler.Enabled {
+		sch = &scheduler.Runner{}
+		for _, t := range c.Runtime.Scheduler.Tasks {
+			if !t.Enabled {
+				continue
+			}
+			switch t.Name {
+			case "account":
+				sch.Tasks = append(sch.Tasks, &task.AccountTask{
+					Alpaca:       alpaca,
+					FirestoreDB:  firestoreDB,
+					Logger:       c.Logger,
+					CronSchedule: t.Schedule,
+				})
+			case "activity":
+				sch.Tasks = append(sch.Tasks, &task.ActivityTask{
+					Alpaca:       alpaca,
+					FirestoreDB:  firestoreDB,
+					Logger:       c.Logger,
+					CronSchedule: t.Schedule,
+				})
+			case "order":
+				sch.Tasks = append(sch.Tasks, &task.OrderTask{
+					Alpaca:       alpaca,
+					FirestoreDB:  firestoreDB,
+					Logger:       c.Logger,
+					CronSchedule: t.Schedule,
+				})
+			case "position":
+				sch.Tasks = append(sch.Tasks, &task.PositionTask{
+					Alpaca:       alpaca,
+					FirestoreDB:  firestoreDB,
+					Logger:       c.Logger,
+					CronSchedule: t.Schedule,
+				})
+			case "corporate_action":
+				sch.Tasks = append(sch.Tasks, &task.CorporateActionTask{
+					Alpaca:       alpaca,
+					FirestoreDB:  firestoreDB,
+					Logger:       c.Logger,
+					CronSchedule: t.Schedule,
+				})
+			case "rebalance":
+				sch.Tasks = append(sch.Tasks, &task.RebalanceTask{
+					Alpaca:       alpaca,
+					FirestoreDB:  firestoreDB,
+					Logger:       c.Logger,
+					CronSchedule: t.Schedule,
+				})
+			default:
+				continue
 			}
 		}
-		symbols := make([]string, 0, len(symbolSet))
-		for s := range symbolSet {
-			symbols = append(symbols, s)
+		sch.Logger = c.Logger
+	}
+	// stream updater init
+	var upd *stream.Updater = nil
+	if c.Runtime.Streamer.Updater.Enabled {
+		upd = &stream.Updater{
+			Logger: c.Logger,
+			Alpaca: alpaca,
 		}
-		if len(symbols) > 0 {
-			streamRunner = &stream.MinuteBarsConsumer{
-				Logger:    c.Logger,
-				Symbols:   symbols,
-				APIKey:    c.Alpaca.APIKey,
-				APISecret: c.Alpaca.APISecretKey,
-				DataURL:   c.Alpaca.APIDataURL,
+	}
+	// stream watcher init
+	var wat *stream.Watcher = nil
+	if c.Runtime.Streamer.Watcher.Enabled {
+		portfolio, err := db.Get[*models.Portfolio](ctx, firestoreDB, db.CollectionPortfolios, c.Runtime.PortfolioID)
+		if err != nil {
+			c.Logger.Log("msg", "failed to load portfolio for watcher", "err", err, "portfolio_id", c.Runtime.PortfolioID)
+		}
+		if err == nil && portfolio != nil {
+			symbolSet := make(map[string]bool)
+			if alloc, ok := portfolio.Allocations["app"]; ok {
+				for s := range alloc.Symbols {
+					symbolSet[s] = true
+				}
 			}
+			symbols := make([]string, 0, len(symbolSet))
+			for s := range symbolSet {
+				symbols = append(symbols, s)
+			}
+			if len(symbols) > 0 {
+				wat = &stream.Watcher{
+					Logger:         c.Logger,
+					Symbols:        symbols,
+					APIKey:         c.Alpaca.APIKey,
+					APISecret:      c.Alpaca.APISecretKey,
+					DataURL:        c.Alpaca.APIDataURL,
+					MarketDataFeed: c.Alpaca.MarketDataFeed,
+				}
+			}
+		} else if err != nil {
+			c.Logger.Log("msg", "failed to load portfolio for minute bars", "err", err, "portfolio_id", c.Runtime.PortfolioID)
 		}
-	} else if err != nil {
-		c.Logger.Log("msg", "failed to load portfolio for minute bars", "err", err, "portfolio_id", c.Runtime.PortfolioID)
 	}
 
 	app := &runtime.App{
-		Logger:       c.Logger,
-		Server:       nil, // TODO: add server
-		Scheduler:    schedulerRunner,
-		Stream:       streamRunner,
-		TradeUpdates: tradeUpdatesConsumer,
+		Logger:    c.Logger,
+		Server:    ser,
+		Scheduler: sch,
+		Watcher:   wat,
+		Updater:   upd,
 	}
 
 	if err := app.Run(ctx); err != nil {
+		_ = n.Notify(ctx, "Error running app: "+err.Error())
 		log.Fatal(err)
 	}
 }

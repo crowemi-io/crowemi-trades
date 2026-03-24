@@ -17,9 +17,8 @@ type Task interface {
 }
 
 type Runner struct {
-	Logger      kitlog.Logger
-	Tasks       []Task
-	TaskTimeout time.Duration
+	Logger kitlog.Logger
+	Tasks  []Task
 }
 
 func (r *Runner) Run(ctx context.Context) error {
@@ -70,9 +69,7 @@ func (r *Runner) runTaskLoop(ctx context.Context, task Task, expr CronExpr) erro
 
 		runCtx := ctx
 		cancel := func() {}
-		if r.TaskTimeout > 0 {
-			runCtx, cancel = context.WithTimeout(ctx, r.TaskTimeout)
-		}
+		runCtx, cancel = context.WithTimeout(ctx, time.Minute*30)
 
 		start := time.Now()
 		err := task.Run(runCtx)
