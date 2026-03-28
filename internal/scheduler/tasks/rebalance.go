@@ -2,8 +2,11 @@ package task
 
 import (
 	"context"
+	"encoding/json"
 	"math"
+	"os"
 
+	"github.com/crowemi-io/crowemi-trades/internal/config"
 	"github.com/crowemi-io/crowemi-trades/internal/db"
 	"github.com/crowemi-io/crowemi-trades/internal/models"
 	"github.com/crowemi-io/crowemi-trades/internal/rebalance"
@@ -18,6 +21,7 @@ type RebalanceTask struct {
 	FirestoreDB  *db.Firestore
 	Logger       kitlog.Logger
 	CronSchedule string
+	Options      config.TaskOptions
 }
 
 func (t *RebalanceTask) Name() string {
@@ -25,6 +29,9 @@ func (t *RebalanceTask) Name() string {
 }
 
 func (t *RebalanceTask) Schedule() string {
+	if t.Logger != nil {
+		_ = level.Debug(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "Schedule() called", "CronSchedule", t.CronSchedule)
+	}
 	if t.CronSchedule != "" {
 		return t.CronSchedule
 	}
@@ -51,6 +58,17 @@ func (t *RebalanceTask) Run(ctx context.Context) error {
 				_ = level.Error(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "rebalance compute failed", "portfolio_id", portfolio.ID, "err", err)
 			}
 			return err
+		}
+		if t.Options.WriteFile {
+			// write result to json
+			jsonData, _ := json.Marshal(result)
+			err := os.WriteFile("rebalance_result.json", jsonData, 0644)
+			if err != nil {
+				if t.Logger != nil {
+					_ = level.Error(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "write result to file failed", "err", err)
+				}
+				return err
+			}
 		}
 
 		for _, action := range result.Actions {

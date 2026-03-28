@@ -41,19 +41,23 @@ func Compute(ctx context.Context, client *alpaca.Client, fs *db.Firestore, portf
 
 	rebalanceAllocations := make(map[string]models.Allocation)
 	for name, alloc := range portfolio.Allocations {
-		if alloc.Rebalance {
+		if true {
 			rebalanceAllocations[name] = alloc
 		}
 	}
 
-	totalCapital := account.PortfolioValue.InexactFloat64()
-
+	totalCash := account.Cash.InexactFloat64()
 	positionValues := make(map[string]float64, len(positions))
+	var costBasis float64
 	for _, p := range positions {
 		if p.MarketValue != nil {
-			positionValues[p.Symbol] = p.MarketValue.InexactFloat64()
+			// cost basis of the position used to calculate total capital
+			costBasis += p.CostBasis.InexactFloat64()
+			positionValues[p.Symbol] = p.CostBasis.InexactFloat64()
 		}
 	}
+
+	totalCapital := costBasis + totalCash
 
 	result := compute(totalCapital, rebalanceAllocations, positionValues)
 	// Only return actions for symbols in rebalance categories (exclude sell-unallocated for other categories).
@@ -78,17 +82,17 @@ func compute(totalCapital float64, allocations map[string]models.Allocation, pos
 			continue
 		}
 		categoryTarget := totalCapital * alloc.Percentage
-		for symbol, pct := range alloc.Symbols {
-			symbolTarget := categoryTarget * pct
-			current := positionValues[symbol]
+		for _, symbol := range alloc.Symbols {
+			symbolTarget := categoryTarget * symbol.Weight
+			current := positionValues[symbol.Name]
 			result.Actions = append(result.Actions, SymbolAction{
 				Category:     category,
-				Symbol:       symbol,
+				Symbol:       symbol.Name,
 				TargetValue:  symbolTarget,
 				CurrentValue: current,
 				Delta:        symbolTarget - current,
 			})
-			allocated[symbol] = true
+			allocated[symbol.Name] = true
 		}
 	}
 

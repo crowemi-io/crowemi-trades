@@ -36,7 +36,7 @@ func (r *Runner) Run(ctx context.Context) error {
 			return fmt.Errorf("scheduler: task %q: %w", task.Name(), err)
 		}
 
-		_ = level.Info(r.Logger).Log(
+		_ = level.Debug(r.Logger).Log(
 			"component", "scheduler",
 			"task", task.Name(),
 			"schedule", task.Schedule(),

@@ -2,10 +2,15 @@ package models
 
 import "encoding/json"
 
+type Symbol struct {
+	Name   string  `firestore:"name" json:"name"`
+	Weight float64 `firestore:"weight" json:"weight"`
+}
+
 type Allocation struct {
-	Rebalance  bool               `firestore:"rebalance" json:"rebalance"`
-	Percentage float64            `firestore:"percentage" json:"percentage"`
-	Symbols    map[string]float64 `firestore:"symbols,omitempty" json:"symbols"`
+	Rebalance  bool     `firestore:"rebalance" json:"rebalance"`
+	Percentage float64  `firestore:"percentage" json:"percentage"`
+	Symbols    []Symbol `firestore:"symbols,omitempty" json:"symbols"`
 }
 
 type Portfolio struct {

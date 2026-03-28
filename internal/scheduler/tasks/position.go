@@ -22,6 +22,9 @@ func (t *PositionTask) Name() string {
 }
 
 func (t *PositionTask) Schedule() string {
+	if t.Logger != nil {
+		_ = level.Debug(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "Schedule() called", "CronSchedule", t.CronSchedule)
+	}
 	if t.CronSchedule != "" {
 		return t.CronSchedule
 	}

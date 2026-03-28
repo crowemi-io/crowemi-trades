@@ -1,62 +1,51 @@
 {
-    "high_dividend" : {
-        "rebalance": true,
-        "percentage": 0.25,
-        "symbols": {
-            "SPYI": 0.25,
-            "QQQI": 0.25,
-            "JEPQ": 0.20,
-            "JEPI": 0.20,
-            "IYRI": 0.10
-        }
-    },
-    "cypto": {
-        "rebalance": false,
-        "percentage": 0.05,
-        "symbols": {
-            "BTC": 1.0
-        }
-    },
-    "reit": {
-        "rebalance": true,
-        "percentage": 0.25,
-        "symbols": {
-            "DOC": 0.2,
-            "O": 0.2,
-            "MAIN": 0.2,
-            "STAG": 0.2,
-            "APLE": 0.2
-        }
-    },
-    "app": {
-        "rebalance": false,
-        "percentage": 0.1,
-        "symbols": {
-            "T": 0.2,
-            "PFE": 0.2,
-            "KO": 0.2,
-            "F": 0.2,
-            "MO": 0.2
-        }
-    },
-    "growth_harvest" : {
-        "rebalance": false,
-        "percentage": 0.15,
-        "symbols": {
-            "SPY": 0.5,
-            "MSFT": 0.25,
-            "AVGO": 0.25
-        }
-    },
-    "dividend": {
-        "rebalance": false,
-        "percentage": 0.15,
-        "symbols": {
-            "SCHD": 1.0
-        }
-    },
-    "cash": {
-        "rebalance": false,
-        "percentage": 0.1
-    }
+  "high_dividend": {
+    "rebalance": true,
+    "percentage": 0.3,
+    "symbols": [
+      {"name": "SPYI", "weight": 0.25},
+      {"name": "QQQI", "weight": 0.25},
+      {"name": "JEPQ", "weight": 0.2},
+      {"name": "JEPI", "weight": 0.2},
+      {"name": "IYRI", "weight": 0.1}
+    ]
+  },
+  "reit": {
+    "rebalance": true,
+    "percentage": 0.3,
+    "symbols": [
+      {"name": "DOC", "weight": 0.2},
+      {"name": "O", "weight": 0.2},
+      {"name": "MAIN", "weight": 0.2},
+      {"name": "STAG", "weight": 0.2},
+      {"name": "APLE", "weight": 0.2}
+    ]
+  },
+  "app": {
+    "rebalance": false,
+    "percentage": 0.1,
+    "symbols": [
+      {"name": "T", "weight": 0.2},
+      {"name": "PFE", "weight": 0.2},
+      {"name": "KO", "weight": 0.2},
+      {"name": "F", "weight": 0.2},
+      {"name": "MO", "weight": 0.2}
+    ]
+  },
+  "growth_harvest": {
+    "rebalance": false,
+    "percentage": 0.15,
+    "symbols": [
+      {"name": "SPY", "weight": 0.5},
+      {"name": "MSFT", "weight": 0.25},
+      {"name": "AVGO", "weight": 0.25}
+    ]
+  },
+  "dividend": {
+    "rebalance": false,
+    "percentage": 0.15,
+    "symbols": [
+      {"name": "SCHD", "weight": 1.0}
+    ]
+  }
 }

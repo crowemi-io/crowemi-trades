@@ -26,6 +26,9 @@ func (t *AccountTask) Name() string {
 }
 
 func (t *AccountTask) Schedule() string {
+	if t.Logger != nil {
+		_ = level.Debug(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "Schedule() called", "CronSchedule", t.CronSchedule)
+	}
 	if t.CronSchedule != "" {
 		return t.CronSchedule
 	}

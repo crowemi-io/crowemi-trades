@@ -20,6 +20,7 @@ import (
 	"github.com/crowemi-io/crowemi-trades/internal/stream"
 
 	ct "github.com/crowemi-io/crowemi-trades"
+	"github.com/go-kit/log/level"
 )
 
 func main() {
@@ -77,6 +78,7 @@ func main() {
 			if !t.Enabled {
 				continue
 			}
+			_ = level.Debug(c.Logger).Log("msg", "loading task from config", "name", t.Name, "schedule", t.Schedule, "enabled", t.Enabled)
 			switch t.Name {
 			case "account":
 				sch.Tasks = append(sch.Tasks, &task.AccountTask{
@@ -119,6 +121,7 @@ func main() {
 					FirestoreDB:  firestoreDB,
 					Logger:       c.Logger,
 					CronSchedule: t.Schedule,
+					Options:      t.Options,
 				})
 			default:
 				continue
@@ -144,8 +147,8 @@ func main() {
 		if err == nil && portfolio != nil {
 			symbolSet := make(map[string]bool)
 			if alloc, ok := portfolio.Allocations["app"]; ok {
-				for s := range alloc.Symbols {
-					symbolSet[s] = true
+				for _, s := range alloc.Symbols {
+					symbolSet[s.Name] = true
 				}
 			}
 			symbols := make([]string, 0, len(symbolSet))

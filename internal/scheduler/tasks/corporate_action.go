@@ -24,6 +24,9 @@ func (t *CorporateActionTask) Name() string {
 }
 
 func (t *CorporateActionTask) Schedule() string {
+	if t.Logger != nil {
+		_ = level.Debug(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "Schedule() called", "CronSchedule", t.CronSchedule)
+	}
 	if t.CronSchedule != "" {
 		return t.CronSchedule
 	}
@@ -112,10 +115,10 @@ func extractSymbols(portfolios []*models.Portfolio) []string {
 	var symbols []string
 	for _, p := range portfolios {
 		for _, alloc := range p.Allocations {
-			for symbol := range alloc.Symbols {
-				if !seen[symbol] {
-					seen[symbol] = true
-					symbols = append(symbols, symbol)
+			for _, symbol := range alloc.Symbols {
+				if !seen[symbol.Name] {
+					seen[symbol.Name] = true
+					symbols = append(symbols, symbol.Name)
 				}
 			}
 		}
