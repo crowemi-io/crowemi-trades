@@ -33,19 +33,14 @@ func main() {
 		ID: cfg.Alpaca.AccountID,
 	}
 
-	ctx := context.Background()
-	id, err := db.Create(ctx, firestoreDB, db.CollectionPortfolios, &account)
-	if err != nil {
-		cfg.Logger.Log("msg", "failed to seed portfolio", "err", err)
-		panic(err)
-	}
-
-	cfg.Logger.Log("msg", "seeded portfolio", "id", id)
-
 	for categoryName, allocation := range allocations {
 		category := models.NewCategory(categoryName, allocation.Rebalance, allocation.Percentage)
 
+		act := &models.Account{
+			ID: account.ID,
+		}
 		account := firestoreDB.Client.Doc("accounts/" + account.ID)
+		account.Set(context.TODO(), &act)
 		account.Collection("allocations").Doc(categoryName).Set(context.TODO(), &category)
 
 		cfg.Logger.Log("msg", "seeded category", "category", categoryName)

@@ -82,6 +82,7 @@ func main() {
 			switch t.Name {
 			case "account":
 				sch.Tasks = append(sch.Tasks, &task.AccountTask{
+					Config:       c,
 					Alpaca:       alpaca,
 					FirestoreDB:  firestoreDB,
 					Logger:       c.Logger,
@@ -89,6 +90,7 @@ func main() {
 				})
 			case "activity":
 				sch.Tasks = append(sch.Tasks, &task.ActivityTask{
+					Config:       c,
 					Alpaca:       alpaca,
 					FirestoreDB:  firestoreDB,
 					Logger:       c.Logger,
@@ -96,6 +98,7 @@ func main() {
 				})
 			case "order":
 				sch.Tasks = append(sch.Tasks, &task.OrderTask{
+					Config:       c,
 					Alpaca:       alpaca,
 					FirestoreDB:  firestoreDB,
 					Logger:       c.Logger,
@@ -103,6 +106,7 @@ func main() {
 				})
 			case "position":
 				sch.Tasks = append(sch.Tasks, &task.PositionTask{
+					Config:       c,
 					Alpaca:       alpaca,
 					FirestoreDB:  firestoreDB,
 					Logger:       c.Logger,
@@ -110,6 +114,7 @@ func main() {
 				})
 			case "corporate_action":
 				sch.Tasks = append(sch.Tasks, &task.CorporateActionTask{
+					Config:       c,
 					Alpaca:       alpaca,
 					FirestoreDB:  firestoreDB,
 					Logger:       c.Logger,
@@ -117,6 +122,7 @@ func main() {
 				})
 			case "rebalance":
 				sch.Tasks = append(sch.Tasks, &task.RebalanceTask{
+					Config:       c,
 					Alpaca:       alpaca,
 					FirestoreDB:  firestoreDB,
 					Logger:       c.Logger,
