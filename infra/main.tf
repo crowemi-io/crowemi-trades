@@ -23,7 +23,7 @@ resource "google_cloud_run_v2_service" "this" {
         value_source {
           secret_key_ref {
             secret  = data.google_secret_manager_secret.this.secret_id
-            version = 5
+            version = 6
           }
         }
       }
