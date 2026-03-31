@@ -68,6 +68,7 @@ func main() {
 		mux.HandleFunc("POST /", handler.ProcessAccount)
 		ser = &http.Server{
 			Handler: mux,
+			Addr:    ":8080",
 		}
 	}
 	// scheduler init
