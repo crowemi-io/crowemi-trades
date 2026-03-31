@@ -4,6 +4,7 @@ import (
 	"context"
 
 	ct "github.com/crowemi-io/crowemi-trades"
+	cfg "github.com/crowemi-io/crowemi-trades/internal/config"
 	"github.com/crowemi-io/crowemi-trades/internal/db"
 	"github.com/crowemi-io/crowemi-trades/internal/models"
 	kitlog "github.com/go-kit/log"
@@ -11,6 +12,7 @@ import (
 )
 
 type PositionTask struct {
+	Config       *cfg.Config
 	Alpaca       *ct.Alpaca
 	FirestoreDB  *db.Firestore
 	Logger       kitlog.Logger
@@ -36,7 +38,7 @@ func (t *PositionTask) Run(ctx context.Context) error {
 		_ = level.Info(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "position sync start")
 	}
 
-	current, err := db.ListWhere[*models.Position](ctx, t.FirestoreDB, db.CollectionPositions, "is_current", "!=", false)
+	current, err := db.ListWhere[*models.Position](ctx, t.FirestoreDB, t.Config.RootCollection()+db.CollectionPositions, "is_current", "!=", false)
 	if err != nil {
 		if t.Logger != nil {
 			_ = level.Error(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "list current positions failed", "err", err)
@@ -60,7 +62,7 @@ func (t *PositionTask) Run(ctx context.Context) error {
 	var synced int
 	for _, p := range positions {
 		doc := models.PositionFromAlpaca(&p)
-		if err := db.Upsert(ctx, t.FirestoreDB, db.CollectionPositions, doc); err != nil {
+		if err := db.Upsert(ctx, t.FirestoreDB, t.Config.RootCollection()+db.CollectionPositions, doc); err != nil {
 			if t.Logger != nil {
 				_ = level.Error(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "upsert position failed", "asset_id", doc.GetID(), "err", err)
 			}
@@ -73,7 +75,7 @@ func (t *PositionTask) Run(ctx context.Context) error {
 
 	var stale int
 	for id := range currentIDs {
-		if err := db.SetFields(ctx, t.FirestoreDB, db.CollectionPositions, id, map[string]interface{}{"is_current": false}); err != nil {
+		if err := db.SetFields(ctx, t.FirestoreDB, t.Config.RootCollection()+db.CollectionPositions, id, map[string]interface{}{"is_current": false}); err != nil {
 			if t.Logger != nil {
 				_ = level.Error(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "mark position stale failed", "asset_id", id, "err", err)
 			}

@@ -2,21 +2,20 @@ package task
 
 import (
 	"context"
-	"encoding/json"
-	"math"
-	"os"
 
+	"github.com/alpacahq/alpaca-trade-api-go/v3/alpaca"
 	"github.com/crowemi-io/crowemi-trades/internal/config"
 	"github.com/crowemi-io/crowemi-trades/internal/db"
 	"github.com/crowemi-io/crowemi-trades/internal/models"
-	"github.com/crowemi-io/crowemi-trades/internal/rebalance"
 	kitlog "github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 
 	ct "github.com/crowemi-io/crowemi-trades"
+	cfg "github.com/crowemi-io/crowemi-trades/internal/config"
 )
 
 type RebalanceTask struct {
+	Config       *cfg.Config
 	Alpaca       *ct.Alpaca
 	FirestoreDB  *db.Firestore
 	Logger       kitlog.Logger
@@ -43,49 +42,92 @@ func (t *RebalanceTask) Run(ctx context.Context) error {
 		_ = level.Info(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "rebalance start")
 	}
 
-	portfolios, err := db.List[*models.Portfolio](ctx, t.FirestoreDB, db.CollectionPortfolios)
+	err := Compute(ctx, t.Alpaca.Client, t.FirestoreDB)
 	if err != nil {
 		if t.Logger != nil {
-			_ = level.Error(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "list portfolios failed", "err", err)
+			_ = level.Error(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "rebalance compute failed", "AccountID", t.Config.Alpaca.AccountID, "err", err)
 		}
 		return err
-	}
-
-	for _, portfolio := range portfolios {
-		result, err := rebalance.Compute(ctx, t.Alpaca.Client, t.FirestoreDB, portfolio.ID)
-		if err != nil {
-			if t.Logger != nil {
-				_ = level.Error(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "rebalance compute failed", "portfolio_id", portfolio.ID, "err", err)
-			}
-			return err
-		}
-		if t.Options.WriteFile {
-			// write result to json
-			jsonData, _ := json.Marshal(result)
-			err := os.WriteFile("rebalance_result.json", jsonData, 0644)
-			if err != nil {
-				if t.Logger != nil {
-					_ = level.Error(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "write result to file failed", "err", err)
-				}
-				return err
-			}
-		}
-
-		for _, action := range result.Actions {
-			if action.Delta == 0 {
-				continue
-			}
-			side := "buy"
-			if action.Delta < 0 {
-				side = "sell"
-			}
-			amount := math.Abs(action.Delta)
-			t.Alpaca.SetOrder(ctx, action.Symbol, side, amount)
-		}
 	}
 
 	if t.Logger != nil {
 		_ = level.Info(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "rebalance complete")
 	}
 	return nil
+}
+
+type SymbolAction struct {
+	Category     string
+	Symbol       string
+	TargetValue  float64
+	CurrentValue float64
+	Delta        float64
+}
+
+// Compute fetches live account/position data from Alpaca and the portfolio
+// config from Firestore, then returns the rebalance plan without placing orders.
+func Compute(ctx context.Context, client *alpaca.Client, fs *db.Firestore) error {
+	account, err := client.GetAccount()
+	if err != nil {
+		return err
+	}
+
+	positions, err := client.GetPositions()
+	if err != nil {
+		return err
+	}
+
+	totalCash := account.Cash.InexactFloat64()
+	positionValues := make(map[string]float64, len(positions))
+	var costBasis float64
+	for _, p := range positions {
+		if p.MarketValue != nil {
+			// cost basis of the position used to calculate total capital
+			costBasis += p.CostBasis.InexactFloat64()
+			positionValues[p.Symbol] = p.CostBasis.InexactFloat64()
+		}
+	}
+
+	totalCapital := costBasis + totalCash
+
+	categories, err := db.List[*models.Category](ctx, fs, db.CollectionAccounts+"/"+account.ID+"/"+db.CollectionAllocations)
+	if err != nil {
+		return err
+	}
+	for _, category := range categories {
+		symbols, err := db.List[*models.Symbol](ctx, fs, db.CollectionPortfolios+"/"+account.ID+"/"+db.CollectionAllocations+"/"+category.ID+"/symbols")
+		if err != nil {
+			return err
+		}
+		rebalance, err := compute(totalCapital, category, symbols, positionValues)
+		if err != nil {
+			return err
+		}
+		print(rebalance)
+		// update result
+	}
+
+	return nil
+}
+
+// compute is the pure computation extracted for testability.
+func compute(totalCapital float64, category *models.Category, symbols []*models.Symbol, positionValues map[string]float64) ([]SymbolAction, error) {
+
+	ret := make([]SymbolAction, 0, len(symbols))
+
+	categoryTarget := totalCapital * category.Percentage
+	for _, symbol := range symbols {
+		symbolTarget := categoryTarget * symbol.Weight
+		current := positionValues[symbol.ID]
+
+		ret = append(ret, SymbolAction{
+			Category:     category.ID,
+			Symbol:       symbol.ID,
+			TargetValue:  symbolTarget,
+			CurrentValue: current,
+			Delta:        symbolTarget - current,
+		})
+	}
+
+	return ret, nil
 }

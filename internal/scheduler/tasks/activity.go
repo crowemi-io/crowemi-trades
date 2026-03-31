@@ -5,6 +5,7 @@ import (
 
 	"github.com/alpacahq/alpaca-trade-api-go/v3/alpaca"
 	ct "github.com/crowemi-io/crowemi-trades"
+	cfg "github.com/crowemi-io/crowemi-trades/internal/config"
 	"github.com/crowemi-io/crowemi-trades/internal/db"
 	"github.com/crowemi-io/crowemi-trades/internal/models"
 	kitlog "github.com/go-kit/log"
@@ -12,6 +13,7 @@ import (
 )
 
 type ActivityTask struct {
+	Config       *cfg.Config
 	Alpaca       *ct.Alpaca
 	FirestoreDB  *db.Firestore
 	Logger       kitlog.Logger
@@ -37,7 +39,7 @@ func (t *ActivityTask) Run(ctx context.Context) error {
 		_ = level.Info(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "activity sync start")
 	}
 
-	latest, err := db.GetLatest[*models.Activity](ctx, t.FirestoreDB, db.CollectionActivities, "occurred_at")
+	latest, err := db.GetLatest[*models.Activity](ctx, t.FirestoreDB, t.Config.RootCollection()+db.CollectionActivities, "occurred_at")
 	if err != nil {
 		if t.Logger != nil {
 			_ = level.Error(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "get latest activity failed", "err", err)
@@ -66,7 +68,7 @@ func (t *ActivityTask) Run(ctx context.Context) error {
 
 		for _, a := range activities {
 			doc := models.ActivityFromAlpaca(&a)
-			if _, err := db.Create(ctx, t.FirestoreDB, db.CollectionActivities, doc); err != nil {
+			if _, err := db.Create(ctx, t.FirestoreDB, t.Config.RootCollection()+db.CollectionActivities, doc); err != nil {
 				if t.Logger != nil {
 					_ = level.Error(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "persist activity failed", "activity_id", a.ID, "err", err)
 				}

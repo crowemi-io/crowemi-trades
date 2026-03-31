@@ -23,6 +23,7 @@ type GoogleCloud struct {
 }
 
 type Alpaca struct {
+	AccountID      string `json:"account_id" omitempty:"true"`
 	APIKey         string `json:"api_key" omitempty:"true"`
 	APISecretKey   string `json:"api_secret_key" omitempty:"true"`
 	APIBaseURL     string `json:"api_base_url" omitempty:"true"`
@@ -39,10 +40,9 @@ type Crowemi struct {
 }
 
 type Runtime struct {
-	PortfolioID string    `json:"portfolio_id" omitempty:"true"`
-	Server      Server    `json:"server" omitempty:"true"`
-	Scheduler   Scheduler `json:"scheduler" omitempty:"true"`
-	Streamer    Streamer  `json:"streamer" omitempty:"true"`
+	Server    Server    `json:"server" omitempty:"true"`
+	Scheduler Scheduler `json:"scheduler" omitempty:"true"`
+	Streamer  Streamer  `json:"streamer" omitempty:"true"`
 }
 
 type Notifier struct {
@@ -62,6 +62,10 @@ type Config struct {
 	Runtime     Runtime     `json:"runtime"`
 	Firestore   *firestore.Client
 	Logger      kitlog.Logger
+}
+
+func (c *Config) RootCollection() string {
+	return "accounts/" + c.Alpaca.AccountID + "/"
 }
 
 func Bootstrap(configPath string) (*Config, error) {

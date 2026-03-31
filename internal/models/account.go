@@ -7,7 +7,7 @@ import (
 )
 
 type Account struct {
-	ID                    string    `firestore:"-"`
+	ID                    string    `firestore:"ID" json:"id"`
 	AccountNumber         string    `firestore:"account_number,omitempty"`
 	Status                string    `firestore:"status,omitempty"`
 	CryptoStatus          string    `firestore:"crypto_status,omitempty"`
@@ -40,11 +40,15 @@ type Account struct {
 	SMA                   string    `firestore:"sma,omitempty"`
 	DaytradeCount         int64     `firestore:"daytrade_count,omitempty"`
 	CryptoTier            int       `firestore:"crypto_tier,omitempty"`
+	SysCreatedAt          time.Time `firestore:"sys_created_at,omitempty"`
+	SysUpdatedAt          time.Time `firestore:"sys_updated_at,omitempty"`
 }
 
-func (m *Account) GetID() string { return m.ID }
+func (m *Account) SetSysUpdate() { m.SysUpdatedAt = time.Now().UTC() }
+func (m *Account) SetSysCreate() { m.SysCreatedAt = time.Now().UTC() }
+func (m *Account) GetID() string { return m.AccountNumber }
 func (m *Account) SetID(id string) {
-	m.ID = id
+	m.AccountNumber = id
 }
 
 func AccountFromAlpaca(acct *alpaca.Account) *Account {
@@ -88,3 +92,52 @@ func AccountFromAlpaca(acct *alpaca.Account) *Account {
 		CryptoTier:            acct.CryptoTier,
 	}
 }
+
+type Symbol struct {
+	ID           string    `firestore:"id" json:"id"`
+	Weight       float64   `firestore:"weight" json:"weight"`
+	SysCreatedAt time.Time `firestore:"sys_created_at,omitempty"`
+	SysUpdatedAt time.Time `firestore:"sys_updated_at,omitempty"`
+}
+
+func (m *Symbol) SetSysUpdate()   { m.SysUpdatedAt = time.Now().UTC() }
+func (m *Symbol) SetSysCreate()   { m.SysCreatedAt = time.Now().UTC() }
+func (m *Symbol) GetID() string   { return m.ID }
+func (m *Symbol) SetID(id string) { m.ID = id }
+func NewSymbol(name string, weight float64) Symbol {
+	return Symbol{
+		ID:     name,
+		Weight: weight,
+	}
+}
+
+type Category struct {
+	ID           string    `firestore:"id" json:"id"`
+	Rebalance    bool      `firestore:"rebalance" json:"rebalance"`
+	Percentage   float64   `firestore:"percentage" json:"percentage"`
+	SysCreatedAt time.Time `firestore:"sys_created_at,omitempty"`
+	SysUpdatedAt time.Time `firestore:"sys_updated_at,omitempty"`
+}
+
+func (m *Category) SetSysUpdate()   { m.SysUpdatedAt = time.Now().UTC() }
+func (m *Category) SetSysCreate()   { m.SysCreatedAt = time.Now().UTC() }
+func (m *Category) GetID() string   { return m.ID }
+func (m *Category) SetID(id string) { m.ID = id }
+func NewCategory(id string, rebalance bool, percentage float64) Category {
+	return Category{
+		ID:         id,
+		Rebalance:  rebalance,
+		Percentage: percentage,
+	}
+}
+
+type Allocation struct {
+	Rebalance    bool              `firestore:"rebalance" json:"rebalance"`
+	Percentage   float64           `firestore:"percentage" json:"percentage"`
+	Symbols      map[string]Symbol `firestore:"symbols,omitempty" json:"symbols"`
+	SysCreatedAt time.Time         `firestore:"sys_created_at,omitempty"`
+	SysUpdatedAt time.Time         `firestore:"sys_updated_at,omitempty"`
+}
+
+func (m *Allocation) SetSysUpdate() { m.SysUpdatedAt = time.Now().UTC() }
+func (m *Allocation) SetSysCreate() { m.SysCreatedAt = time.Now().UTC() }

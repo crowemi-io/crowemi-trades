@@ -140,20 +140,18 @@ func main() {
 	// stream watcher init
 	var wat *stream.Watcher = nil
 	if c.Runtime.Streamer.Watcher.Enabled {
-		portfolio, err := db.Get[*models.Portfolio](ctx, firestoreDB, db.CollectionPortfolios, c.Runtime.PortfolioID)
+		// get the symbols associated with app category
+		docs, err := firestoreDB.Client.Doc("accounts/" + c.Alpaca.AccountID).Collection(db.CollectionAllocations).Doc("app").Collection("symbols").Documents(context.TODO()).GetAll()
 		if err != nil {
-			c.Logger.Log("msg", "failed to load portfolio for watcher", "err", err, "portfolio_id", c.Runtime.PortfolioID)
+			c.Logger.Log("msg", "failed to load symbols for watcher", "err", err, "AccountID", c.Alpaca.AccountID)
 		}
-		if err == nil && portfolio != nil {
-			symbolSet := make(map[string]bool)
-			if alloc, ok := portfolio.Allocations["app"]; ok {
-				for _, s := range alloc.Symbols {
-					symbolSet[s.Name] = true
-				}
-			}
-			symbols := make([]string, 0, len(symbolSet))
-			for s := range symbolSet {
-				symbols = append(symbols, s)
+
+		if docs != nil {
+			var symbols []string = nil
+			for _, doc := range docs {
+				var symbol models.Symbol
+				doc.DataTo(symbol)
+				symbols = append(symbols, symbol.ID)
 			}
 			if len(symbols) > 0 {
 				wat = &stream.Watcher{
@@ -166,7 +164,7 @@ func main() {
 				}
 			}
 		} else if err != nil {
-			c.Logger.Log("msg", "failed to load portfolio for minute bars", "err", err, "portfolio_id", c.Runtime.PortfolioID)
+			c.Logger.Log("msg", "failed to load portfolio for minute bars", "err", err, "AccountID", c.Alpaca.AccountID)
 		}
 	}
 

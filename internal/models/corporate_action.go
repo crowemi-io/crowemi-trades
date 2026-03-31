@@ -23,8 +23,12 @@ type CorporateAction struct {
 	OldRate                 string    `firestore:"old_rate,omitempty"`
 	NewRate                 string    `firestore:"new_rate,omitempty"`
 	LastSyncedAt            time.Time `firestore:"last_synced_at,omitempty"`
+	SysCreatedAt            time.Time `firestore:"sys_created_at,omitempty"`
+	SysUpdatedAt            time.Time `firestore:"sys_updated_at,omitempty"`
 }
 
+func (m *CorporateAction) SetSysUpdate() { m.SysUpdatedAt = time.Now().UTC() }
+func (m *CorporateAction) SetSysCreate() { m.SysCreatedAt = time.Now().UTC() }
 func (m *CorporateAction) GetID() string { return m.ID }
 func (m *CorporateAction) SetID(id string) {
 	m.ID = id

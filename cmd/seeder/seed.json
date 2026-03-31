@@ -2,50 +2,50 @@
   "high_dividend": {
     "rebalance": true,
     "percentage": 0.3,
-    "symbols": [
-      {"name": "SPYI", "weight": 0.25},
-      {"name": "QQQI", "weight": 0.25},
-      {"name": "JEPQ", "weight": 0.2},
-      {"name": "JEPI", "weight": 0.2},
-      {"name": "IYRI", "weight": 0.1}
-    ]
+    "symbols": {
+      "SPYI" : {"weight": 0.25},
+      "QQQI" : {"weight": 0.25},
+      "JEPQ" : {"weight": 0.2},
+      "JEPI" : {"weight": 0.2},
+      "IYRI" : {"weight": 0.1}
+    }
   },
   "reit": {
     "rebalance": true,
     "percentage": 0.3,
-    "symbols": [
-      {"name": "DOC", "weight": 0.2},
-      {"name": "O", "weight": 0.2},
-      {"name": "MAIN", "weight": 0.2},
-      {"name": "STAG", "weight": 0.2},
-      {"name": "APLE", "weight": 0.2}
-    ]
+    "symbols": {
+      "DOC" : {"weight": 0.2},
+      "O" : {"weight": 0.2},
+      "MAIN" : {"weight": 0.2},
+      "STAG" : {"weight": 0.2},
+      "APLE" : {"weight": 0.2}
+    }
   },
   "app": {
     "rebalance": false,
     "percentage": 0.1,
-    "symbols": [
-      {"name": "T", "weight": 0.2},
-      {"name": "PFE", "weight": 0.2},
-      {"name": "KO", "weight": 0.2},
-      {"name": "F", "weight": 0.2},
-      {"name": "MO", "weight": 0.2}
-    ]
+    "symbols": {
+      "T" : {"weight": 0.2},
+      "PFE" : {"weight": 0.2},
+      "KO" : {"weight": 0.2},
+      "F" : {"weight": 0.2},
+      "MO" : {"weight": 0.2}
+    } 
   },
   "growth_harvest": {
     "rebalance": false,
     "percentage": 0.15,
-    "symbols": [
-      {"name": "SPY", "weight": 0.5},
-      {"name": "MSFT", "weight": 0.25},
-      {"name": "AVGO", "weight": 0.25}
-    ]
+    "symbols": {
+      "SPY" : {"weight": 0.5},
+      "MSFT" : {"weight": 0.25},
+      "AVGO" : {"weight": 0.25}
+    }
   },
   "dividend": {
     "rebalance": false,
     "percentage": 0.15,
-    "symbols": [
-      {"name": "SCHD", "weight": 1.0}
-    ]
+    "symbols": {
+      "SCHD" : {"weight": 1.0}
+    }
   }
 }

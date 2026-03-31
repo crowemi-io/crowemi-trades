@@ -8,7 +8,6 @@ import (
 )
 
 type Order struct {
-	ID             string    `firestore:"-"`
 	ClientOrderID  string    `firestore:"client_order_id,omitempty"`
 	AssetID        string    `firestore:"asset_id,omitempty"`
 	Symbol         string    `firestore:"symbol,omitempty"`
@@ -29,11 +28,15 @@ type Order struct {
 	FilledAt       time.Time `firestore:"filled_at,omitempty"`
 	ExpiredAt      time.Time `firestore:"expired_at,omitempty"`
 	CanceledAt     time.Time `firestore:"canceled_at,omitempty"`
+	SysCreatedAt   time.Time `firestore:"sys_created_at,omitempty"`
+	SysUpdatedAt   time.Time `firestore:"sys_updated_at,omitempty"`
 }
 
-func (m *Order) GetID() string { return m.ID }
+func (m *Order) SetSysUpdate() { m.SysUpdatedAt = time.Now().UTC() }
+func (m *Order) SetSysCreate() { m.SysCreatedAt = time.Now().UTC() }
+func (m *Order) GetID() string { return m.ClientOrderID }
 func (m *Order) SetID(id string) {
-	m.ID = id
+	m.ClientOrderID = id
 }
 
 func OrderFromAlpaca(o *alpaca.Order) *Order {
@@ -42,7 +45,6 @@ func OrderFromAlpaca(o *alpaca.Order) *Order {
 	}
 
 	return &Order{
-		ID:             o.ID,
 		ClientOrderID:  o.ClientOrderID,
 		AssetID:        o.AssetID,
 		Symbol:         o.Symbol,
