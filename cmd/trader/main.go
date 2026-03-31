@@ -65,7 +65,7 @@ func main() {
 			Alpaca:      alpaca,
 		}
 		mux := http.NewServeMux()
-		mux.HandleFunc("POST /account/process", handler.ProcessAccount)
+		mux.HandleFunc("POST /", handler.ProcessAccount)
 		ser = &http.Server{
 			Handler: mux,
 		}
