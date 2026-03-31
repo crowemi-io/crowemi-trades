@@ -8,10 +8,13 @@ import (
 
 	"cloud.google.com/go/firestore"
 	"google.golang.org/api/iterator"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 const (
 	CollectionAccounts         = "accounts"
+	CollectionAllocations      = "allocations"
 	CollectionActivities       = "activities"
 	CollectionCorporateActions = "corporate_actions"
 	CollectionOrders           = "orders"
@@ -28,6 +31,8 @@ type Firestore struct {
 type Document interface {
 	GetID() string
 	SetID(id string)
+	SetSysCreate()
+	SetSysUpdate()
 }
 
 func NewFirestore(client *firestore.Client) *Firestore {
@@ -39,6 +44,10 @@ func Create[T Document](ctx context.Context, fs *Firestore, collection string, d
 		return "", errors.New("firestore client is not initialized")
 	}
 
+	// set system fields
+	doc.SetSysCreate()
+	doc.SetSysUpdate()
+
 	col := fs.Client.Collection(collection)
 	id := doc.GetID()
 
@@ -48,7 +57,6 @@ func Create[T Document](ctx context.Context, fs *Firestore, collection string, d
 	} else {
 		ref = col.Doc(id)
 	}
-
 	if _, err := ref.Set(ctx, doc); err != nil {
 		return "", err
 	}
@@ -153,6 +161,9 @@ func Update[T Document](ctx context.Context, fs *Firestore, collection string, d
 		return errors.New("firestore client is not initialized")
 	}
 
+	// set system fields
+	doc.SetSysUpdate()
+
 	id := doc.GetID()
 	if id == "" {
 		return errors.New("document id is required for update")
@@ -167,12 +178,24 @@ func Upsert[T Document](ctx context.Context, fs *Firestore, collection string, d
 		return errors.New("firestore client is not initialized")
 	}
 
+	// set system fields
+	doc.SetSysUpdate()
+
 	id := doc.GetID()
 	if id == "" {
 		return errors.New("document id is required for upsert")
 	}
 
-	_, err := fs.Client.Collection(collection).Doc(id).Set(ctx, doc)
+	_, err := fs.Client.Collection(collection).Doc(id).Get(ctx)
+	if err != nil {
+		if status.Code(err) == codes.NotFound {
+			Create(ctx, fs, collection, doc)
+			return nil
+		}
+		return err
+	}
+
+	_, err = fs.Client.Collection(collection).Doc(id).Set(ctx, doc)
 	return err
 }
 

@@ -29,8 +29,12 @@ type Activity struct {
 	IsOption       bool      `firestore:"is_option"`
 	OptionsIncome  float64   `firestore:"options_income"`
 	SymbolDerived  string    `firestore:"symbol_derived,omitempty"`
+	SysCreatedAt   time.Time `firestore:"sys_created_at,omitempty"`
+	SysUpdatedAt   time.Time `firestore:"sys_updated_at,omitempty"`
 }
 
+func (m *Activity) SetSysUpdate() { m.SysUpdatedAt = time.Now().UTC() }
+func (m *Activity) SetSysCreate() { m.SysCreatedAt = time.Now().UTC() }
 func (m *Activity) GetID() string { return m.ID }
 func (m *Activity) SetID(id string) {
 	m.ID = id

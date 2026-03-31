@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"time"
-
-	"github.com/crowemi-io/crowemi-trades/internal/notifier"
 )
 
 // Config holds settings for the Telegram notifier.
@@ -19,20 +17,20 @@ type Config struct {
 	ChatID   int64  `json:"chat_id"`
 }
 
-// client calls the Telegram Bot API over HTTP and implements notifier.Notifier.
-type client struct {
+// Client calls the Telegram Bot API over HTTP and implements notifier.Notifier.
+type Client struct {
 	baseURL    string
 	chatID     int64
 	httpClient *http.Client
 }
 
 // New returns a Notifier that sends messages to the configured Telegram chat/channel.
-func New(cfg Config) (notifier.Notifier, error) {
+func New(cfg Config) (*Client, error) {
 	if cfg.BotToken == "" {
 		return nil, fmt.Errorf("telegram: bot_token is required")
 	}
 	baseURL := "https://api.telegram.org/bot" + cfg.BotToken
-	return &client{
+	return &Client{
 		baseURL: baseURL,
 		chatID:  cfg.ChatID,
 		httpClient: &http.Client{
@@ -48,7 +46,7 @@ type sendMessageResponse struct {
 }
 
 // Notify sends the message to the configured chat/channel.
-func (c *client) Notify(ctx context.Context, message string) error {
+func (c *Client) Notify(ctx context.Context, message string) error {
 	reqBody := struct {
 		ChatID int64  `json:"chat_id"`
 		Text   string `json:"text"`

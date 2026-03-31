@@ -6,24 +6,20 @@ import (
 	"time"
 
 	"github.com/alpacahq/alpaca-trade-api-go/v3/alpaca"
+	ct "github.com/crowemi-io/crowemi-trades"
 	kitlog "github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 )
 
-type TradeUpdateStreamer interface {
-	StreamTradeUpdates(ctx context.Context, handler func(alpaca.TradeUpdate), req alpaca.StreamTradeUpdatesRequest) error
-}
-
-type TradeUpdatesConsumer struct {
+type Updater struct {
 	Logger       kitlog.Logger
-	Streamer     TradeUpdateStreamer
+	Alpaca       *ct.Alpaca
 	ReconnectMin time.Duration
 	ReconnectMax time.Duration
-	SymbolMgr    *SymbolManager // optional: for per-symbol routing
 }
 
-func (c *TradeUpdatesConsumer) Run(ctx context.Context) error {
-	if c.Streamer == nil {
+func (c *Updater) Run(ctx context.Context) error {
+	if c.Alpaca.Client == nil {
 		<-ctx.Done()
 		return nil
 	}
@@ -40,23 +36,17 @@ func (c *TradeUpdatesConsumer) Run(ctx context.Context) error {
 	req := alpaca.StreamTradeUpdatesRequest{}
 	backoff := minBackoff
 	for {
-		err := c.Streamer.StreamTradeUpdates(ctx, func(tu alpaca.TradeUpdate) {
+		err := c.Alpaca.Client.StreamTradeUpdates(ctx, func(tu alpaca.TradeUpdate) {
 			req.Since = tu.At.Add(time.Nanosecond)
-
-			// Route to SymbolManager if available for per-symbol processing
-			if c.SymbolMgr != nil {
-				c.SymbolMgr.OnMessage(tu)
-			} else {
-				// Fallback: log globally for backwards compatibility
-				_ = level.Info(c.Logger).Log(
-					"component", "stream",
-					"event", tu.Event,
-					"event_id", tu.EventID,
-					"order_id", tu.Order.ID,
-					"symbol", tu.Order.Symbol,
-					"msg", "trade update received",
-				)
-			}
+			_ = level.Info(c.Logger).Log(
+				"component", "stream",
+				"event", tu.Event,
+				"event_id", tu.EventID,
+				"order_id", tu.Order.ID,
+				"symbol", tu.Order.Symbol,
+				"status", tu.Order.Status,
+				"msg", "trade update received",
+			)
 		}, req)
 
 		if err == nil || errors.Is(err, context.Canceled) {

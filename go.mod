@@ -6,7 +6,6 @@ require (
 	cloud.google.com/go/firestore v1.21.0
 	github.com/alpacahq/alpaca-trade-api-go/v3 v3.9.1
 	github.com/go-kit/log v0.2.1
-	github.com/google/uuid v1.6.0
 	golang.org/x/sync v0.18.0
 	google.golang.org/api v0.256.0
 )

@@ -15,8 +15,12 @@ type Position struct {
 	UnrealizedPL  float64   `firestore:"unrealized_pl,omitempty"`
 	IsCurrent     bool      `firestore:"is_current,omitempty"`
 	RecordedAt    time.Time `firestore:"recorded_at,omitempty"`
+	SysCreatedAt  time.Time `firestore:"sys_created_at,omitempty"`
+	SysUpdatedAt  time.Time `firestore:"sys_updated_at,omitempty"`
 }
 
+func (m *Position) SetSysUpdate() { m.SysUpdatedAt = time.Now().UTC() }
+func (m *Position) SetSysCreate() { m.SysCreatedAt = time.Now().UTC() }
 func (m *Position) GetID() string { return m.ID }
 func (m *Position) SetID(id string) {
 	m.ID = id

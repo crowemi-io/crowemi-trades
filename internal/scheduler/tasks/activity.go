@@ -4,33 +4,42 @@ import (
 	"context"
 
 	"github.com/alpacahq/alpaca-trade-api-go/v3/alpaca"
+	ct "github.com/crowemi-io/crowemi-trades"
+	cfg "github.com/crowemi-io/crowemi-trades/internal/config"
 	"github.com/crowemi-io/crowemi-trades/internal/db"
 	"github.com/crowemi-io/crowemi-trades/internal/models"
 	kitlog "github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 )
 
-type ActivitySyncTask struct {
-	AlpacaClient *alpaca.Client
+type ActivityTask struct {
+	Config       *cfg.Config
+	Alpaca       *ct.Alpaca
 	FirestoreDB  *db.Firestore
 	Logger       kitlog.Logger
 	CronSchedule string
 }
 
-func (t *ActivitySyncTask) Name() string {
+func (t *ActivityTask) Name() string {
 	return "activity_sync"
 }
 
-func (t *ActivitySyncTask) Schedule() string {
-	return t.CronSchedule
+func (t *ActivityTask) Schedule() string {
+	if t.Logger != nil {
+		_ = level.Debug(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "Schedule() called", "CronSchedule", t.CronSchedule)
+	}
+	if t.CronSchedule != "" {
+		return t.CronSchedule
+	}
+	return "0/30 * * * *"
 }
 
-func (t *ActivitySyncTask) Run(ctx context.Context) error {
+func (t *ActivityTask) Run(ctx context.Context) error {
 	if t.Logger != nil {
 		_ = level.Info(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "activity sync start")
 	}
 
-	latest, err := db.GetLatest[*models.Activity](ctx, t.FirestoreDB, db.CollectionActivities, "occurred_at")
+	latest, err := db.GetLatest[*models.Activity](ctx, t.FirestoreDB, t.Config.RootCollection()+db.CollectionActivities, "occurred_at")
 	if err != nil {
 		if t.Logger != nil {
 			_ = level.Error(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "get latest activity failed", "err", err)
@@ -45,7 +54,7 @@ func (t *ActivitySyncTask) Run(ctx context.Context) error {
 
 	var total int
 	for {
-		activities, err := t.AlpacaClient.GetAccountActivities(req)
+		activities, err := t.Alpaca.Client.GetAccountActivities(req)
 		if err != nil {
 			if t.Logger != nil {
 				_ = level.Error(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "fetch activities failed", "err", err)
@@ -59,7 +68,7 @@ func (t *ActivitySyncTask) Run(ctx context.Context) error {
 
 		for _, a := range activities {
 			doc := models.ActivityFromAlpaca(&a)
-			if _, err := db.Create(ctx, t.FirestoreDB, db.CollectionActivities, doc); err != nil {
+			if _, err := db.Create(ctx, t.FirestoreDB, t.Config.RootCollection()+db.CollectionActivities, doc); err != nil {
 				if t.Logger != nil {
 					_ = level.Error(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "persist activity failed", "activity_id", a.ID, "err", err)
 				}

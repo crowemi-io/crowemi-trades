@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/alpacahq/alpaca-trade-api-go/v3/alpaca"
+	ct "github.com/crowemi-io/crowemi-trades"
+	cfg "github.com/crowemi-io/crowemi-trades/internal/config"
 	"github.com/crowemi-io/crowemi-trades/internal/db"
 	"github.com/crowemi-io/crowemi-trades/internal/models"
 	kitlog "github.com/go-kit/log"
@@ -12,27 +14,37 @@ import (
 
 const maxOrdersPerPage = 500
 
-type OrderSyncTask struct {
-	AlpacaClient *alpaca.Client
+type OrderTask struct {
+	Config       *cfg.Config
+	Alpaca       *ct.Alpaca
 	FirestoreDB  *db.Firestore
 	Logger       kitlog.Logger
 	CronSchedule string
 }
 
-func (t *OrderSyncTask) Name() string {
+func (t *OrderTask) DefaultSchedule() string {
+	return "0/30 * * * *"
+}
+
+func (t *OrderTask) Name() string {
 	return "order_sync"
 }
 
-func (t *OrderSyncTask) Schedule() string {
-	return t.CronSchedule
+func (t *OrderTask) Schedule() string {
+	if t.Logger != nil {
+		_ = level.Debug(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "Schedule() called", "CronSchedule", t.CronSchedule)
+	}
+	if t.CronSchedule != "" {
+		return t.CronSchedule
+	}
+	return "0/30 * * * *"
 }
-
-func (t *OrderSyncTask) Run(ctx context.Context) error {
+func (t *OrderTask) Run(ctx context.Context) error {
 	if t.Logger != nil {
 		_ = level.Info(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "order sync start")
 	}
 
-	latest, err := db.GetLatest[*models.Order](ctx, t.FirestoreDB, db.CollectionOrders, "created_at")
+	latest, err := db.GetLatest[*models.Order](ctx, t.FirestoreDB, t.Config.RootCollection()+db.CollectionOrders, "created_at")
 	if err != nil {
 		if t.Logger != nil {
 			_ = level.Error(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "get latest order failed", "err", err)
@@ -51,7 +63,7 @@ func (t *OrderSyncTask) Run(ctx context.Context) error {
 
 	var total int
 	for {
-		orders, err := t.AlpacaClient.GetOrders(req)
+		orders, err := t.Alpaca.Client.GetOrders(req)
 		if err != nil {
 			if t.Logger != nil {
 				_ = level.Error(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "fetch orders failed", "err", err)
@@ -61,7 +73,7 @@ func (t *OrderSyncTask) Run(ctx context.Context) error {
 
 		for _, o := range orders {
 			doc := models.OrderFromAlpaca(&o)
-			if _, err := db.Create(ctx, t.FirestoreDB, db.CollectionOrders, doc); err != nil {
+			if _, err := db.Create(ctx, t.FirestoreDB, t.Config.RootCollection()+db.CollectionOrders, doc); err != nil {
 				if t.Logger != nil {
 					_ = level.Error(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "persist order failed", "order_id", o.ID, "err", err)
 				}

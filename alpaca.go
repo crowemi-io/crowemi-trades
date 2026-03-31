@@ -1,11 +1,17 @@
 package crowemi_trades
 
 import (
+	"context"
+	"fmt"
+	"log"
+
 	"github.com/alpacahq/alpaca-trade-api-go/v3/alpaca"
+	"github.com/crowemi-io/crowemi-trades/internal/notifier"
 )
 
 type Alpaca struct {
-	Client *alpaca.Client
+	Client   *alpaca.Client
+	Notifier *notifier.Notifier
 }
 
 func (alpaca *Alpaca) GetPositions() ([]alpaca.Position, error) {
@@ -34,4 +40,13 @@ func (alpaca *Alpaca) GetCash() (float64, error) {
 		return cashValue, nil
 	}
 	return cashValue, nil
+}
+
+// SetOrder is a shared stub that logs and optionally notifies for an order.
+// It does not place an order with the broker.
+func (a *Alpaca) SetOrder(ctx context.Context, symbol, side string, amount float64) {
+	log.Printf("rebalance order: %s %s %.2f", side, symbol, amount)
+	if a.Notifier != nil {
+		_ = a.Notifier.Notify(ctx, "Rebalance order: "+side+" "+symbol+" amount "+fmt.Sprintf("%.2f", amount))
+	}
 }

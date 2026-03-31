@@ -1,55 +1,51 @@
 {
-    "high_dividend" : {
-        "percentage": 0.25,
-        "symbols": {
-            "SPYI": 0.25,
-            "QQQI": 0.25,
-            "JEPQ": 0.20,
-            "JEPI": 0.20,
-            "IYRI": 0.10
-        }
-    },
-    "cypto": {
-        "percentage": 0.05,
-        "symbols": {
-            "BTC": 1.0
-        }
-    },
-    "reit": {
-        "percentage": 0.25,
-        "symbols": {
-            "DOC": 0.2,
-            "O": 0.2,
-            "MAIN": 0.2,
-            "STAG": 0.2,
-            "APLE": 0.2
-        }
-    },
-    "app": {
-        "percentage": 0.1,
-        "symbols": {
-            "T": 0.2,
-            "PFE": 0.2,
-            "KO": 0.2,
-            "F": 0.2,
-            "MO": 0.2
-        }
-    },
-    "growth_harvest" : {
-        "percentage": 0.15,
-        "symbols": {
-            "SPY": 0.5,
-            "MSFT": 0.25,
-            "AVGO": 0.25
-        }
-    },
-    "dividend": {
-        "percentage": 0.15,
-        "symbols": {
-            "SCHD": 1.0
-        }
-    },
-    "cash": {
-        "percentage": 0.1
+  "high_dividend": {
+    "rebalance": true,
+    "percentage": 0.3,
+    "symbols": {
+      "SPYI" : {"weight": 0.25},
+      "QQQI" : {"weight": 0.25},
+      "JEPQ" : {"weight": 0.2},
+      "JEPI" : {"weight": 0.2},
+      "IYRI" : {"weight": 0.1}
     }
+  },
+  "reit": {
+    "rebalance": true,
+    "percentage": 0.3,
+    "symbols": {
+      "DOC" : {"weight": 0.2},
+      "O" : {"weight": 0.2},
+      "MAIN" : {"weight": 0.2},
+      "STAG" : {"weight": 0.2},
+      "APLE" : {"weight": 0.2}
+    }
+  },
+  "app": {
+    "rebalance": false,
+    "percentage": 0.1,
+    "symbols": {
+      "T" : {"weight": 0.2},
+      "PFE" : {"weight": 0.2},
+      "KO" : {"weight": 0.2},
+      "F" : {"weight": 0.2},
+      "MO" : {"weight": 0.2}
+    } 
+  },
+  "growth_harvest": {
+    "rebalance": false,
+    "percentage": 0.15,
+    "symbols": {
+      "SPY" : {"weight": 0.5},
+      "MSFT" : {"weight": 0.25},
+      "AVGO" : {"weight": 0.25}
+    }
+  },
+  "dividend": {
+    "rebalance": false,
+    "percentage": 0.15,
+    "symbols": {
+      "SCHD" : {"weight": 1.0}
+    }
+  }
 }

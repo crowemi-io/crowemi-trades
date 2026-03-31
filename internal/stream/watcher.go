@@ -11,17 +11,18 @@ import (
 
 // MinuteBarsConsumer subscribes to Alpaca market data minute bars for the given symbols
 // and runs until context is cancelled or the connection terminates.
-type MinuteBarsConsumer struct {
-	Logger    kitlog.Logger
-	Symbols   []string
-	APIKey    string
-	APISecret string
-	DataURL   string // optional; empty uses SDK default
+type Watcher struct {
+	Logger         kitlog.Logger
+	Symbols        []string
+	APIKey         string
+	APISecret      string
+	DataURL        string // optional; empty uses SDK default
+	MarketDataFeed string // optional; "iex" (default) or "sip"
 }
 
 // Run connects to the market data stream, subscribes to minute bars for the consumer's symbols,
 // and blocks until ctx is done or the connection terminates. Implements runtime stream runner.
-func (c *MinuteBarsConsumer) Run(ctx context.Context) error {
+func (c *Watcher) Run(ctx context.Context) error {
 	if len(c.Symbols) == 0 {
 		_ = level.Info(c.Logger).Log("component", "stream", "msg", "no symbols, minute bars consumer idle")
 		<-ctx.Done()
@@ -48,6 +49,15 @@ func (c *MinuteBarsConsumer) Run(ctx context.Context) error {
 		opts = append(opts, mdstream.WithBaseURL(c.DataURL))
 	}
 
-	client := mdstream.NewStocksClient(marketdata.IEX, opts...)
+	client := mdstream.NewStocksClient(feed(c.MarketDataFeed), opts...)
 	return client.Connect(ctx)
+}
+
+func feed(m string) marketdata.Feed {
+	switch m {
+	case "sip":
+		return marketdata.SIP
+	default:
+		return marketdata.IEX
+	}
 }
