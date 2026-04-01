@@ -15,7 +15,7 @@ func (h *Handler) ProcessAccount(w http.ResponseWriter, r *http.Request) {
 	sessionID := newSessionID()
 	_ = h.Logger.Log("msg", accountLogPath+" start", "path", accountLogPath, "session_id", sessionID)
 
-	account, err := h.Alpaca.GetAccount()
+	account, err := h.Alpaca.Client.GetAccount()
 	if err != nil {
 		_ = h.Logger.Log("msg", accountLogPath+" error", "path", accountLogPath, "session_id", sessionID, "err", err)
 		w.WriteHeader(http.StatusInternalServerError)

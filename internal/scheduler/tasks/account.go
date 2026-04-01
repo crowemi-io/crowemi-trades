@@ -3,34 +3,41 @@ package task
 import (
 	"context"
 
-	"github.com/alpacahq/alpaca-trade-api-go/v3/alpaca"
+	ct "github.com/crowemi-io/crowemi-trades"
+	cfg "github.com/crowemi-io/crowemi-trades/internal/config"
+
 	"github.com/crowemi-io/crowemi-trades/internal/db"
 	"github.com/crowemi-io/crowemi-trades/internal/models"
 	kitlog "github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 )
 
-type AccountSyncTask struct {
-	AlpacaClient *alpaca.Client
+type AccountTask struct {
+	Config       *cfg.Config
+	Alpaca       *ct.Alpaca
 	FirestoreDB  *db.Firestore
 	Logger       kitlog.Logger
 	CronSchedule string
 }
 
-func (t *AccountSyncTask) Name() string {
-	return "account_sync"
+func (t *AccountTask) DefaultSchedule() string { return "0/30 * * * *" }
+func (t *AccountTask) Name() string            { return "account_sync" }
+func (t *AccountTask) Schedule() string {
+	if t.Logger != nil {
+		_ = level.Debug(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "Schedule() called", "CronSchedule", t.CronSchedule)
+	}
+	if t.CronSchedule != "" {
+		return t.CronSchedule
+	}
+	return "0/30 * * * *"
 }
 
-func (t *AccountSyncTask) Schedule() string {
-	return t.CronSchedule
-}
-
-func (t *AccountSyncTask) Run(ctx context.Context) error {
+func (t *AccountTask) Run(ctx context.Context) error {
 	if t.Logger != nil {
 		_ = level.Info(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "account sync start")
 	}
 
-	account, err := t.AlpacaClient.GetAccount()
+	account, err := t.Alpaca.Client.GetAccount()
 	if err != nil {
 		if t.Logger != nil {
 			_ = level.Error(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "fetch account failed", "err", err)
@@ -39,7 +46,7 @@ func (t *AccountSyncTask) Run(ctx context.Context) error {
 	}
 
 	accountDoc := models.AccountFromAlpaca(account)
-	_, err = db.Create(ctx, t.FirestoreDB, db.CollectionAccounts, accountDoc)
+	err = db.Upsert(ctx, t.FirestoreDB, db.CollectionAccounts, accountDoc)
 	if err != nil {
 		if t.Logger != nil {
 			_ = level.Error(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "persist account failed", "account_id", account.ID, "err", err)

@@ -17,9 +17,8 @@ type Task interface {
 }
 
 type Runner struct {
-	Logger      kitlog.Logger
-	Tasks       []Task
-	TaskTimeout time.Duration
+	Logger kitlog.Logger
+	Tasks  []Task
 }
 
 func (r *Runner) Run(ctx context.Context) error {
@@ -37,7 +36,7 @@ func (r *Runner) Run(ctx context.Context) error {
 			return fmt.Errorf("scheduler: task %q: %w", task.Name(), err)
 		}
 
-		_ = level.Info(r.Logger).Log(
+		_ = level.Debug(r.Logger).Log(
 			"component", "scheduler",
 			"task", task.Name(),
 			"schedule", task.Schedule(),
@@ -70,9 +69,7 @@ func (r *Runner) runTaskLoop(ctx context.Context, task Task, expr CronExpr) erro
 
 		runCtx := ctx
 		cancel := func() {}
-		if r.TaskTimeout > 0 {
-			runCtx, cancel = context.WithTimeout(ctx, r.TaskTimeout)
-		}
+		runCtx, cancel = context.WithTimeout(ctx, time.Minute*30)
 
 		start := time.Now()
 		err := task.Run(runCtx)

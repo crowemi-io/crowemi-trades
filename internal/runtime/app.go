@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/crowemi-io/crowemi-trades/internal/scheduler"
+	"github.com/crowemi-io/crowemi-trades/internal/stream"
 	kitlog "github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"golang.org/x/sync/errgroup"
@@ -14,8 +16,9 @@ import (
 type App struct {
 	Logger    kitlog.Logger
 	Server    *http.Server
-	Scheduler interface{ Run(context.Context) error }
-	Stream    interface{ Run(context.Context) error }
+	Scheduler *scheduler.Runner
+	Watcher   *stream.Watcher
+	Updater   *stream.Updater
 }
 
 func (a *App) Run(ctx context.Context) error {
@@ -47,10 +50,17 @@ func (a *App) Run(ctx context.Context) error {
 		})
 	}
 
-	if a.Stream != nil {
+	if a.Watcher != nil {
 		group.Go(func() error {
-			_ = level.Info(a.Logger).Log("component", "stream", "msg", "consumer start")
-			return a.Stream.Run(groupCtx)
+			_ = level.Info(a.Logger).Log("component", "watcher", "msg", "consumer start")
+			return a.Watcher.Run(groupCtx)
+		})
+	}
+
+	if a.Updater != nil {
+		group.Go(func() error {
+			_ = level.Info(a.Logger).Log("component", "updater", "msg", "consumer start")
+			return a.Updater.Run(groupCtx)
 		})
 	}
 
