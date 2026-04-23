@@ -1,42 +1,26 @@
 package task
 
-import (
-	"context"
-	"net/http"
-	"testing"
+import "testing"
 
-	"github.com/alpacahq/alpaca-trade-api-go/v3/alpaca"
-	ct "github.com/crowemi-io/crowemi-trades"
-	"github.com/crowemi-io/crowemi-trades/internal/config"
-	"github.com/crowemi-io/crowemi-trades/internal/db"
-)
+func TestPositionTask_Name(t *testing.T) {
+	task := &PositionTask{}
+	if got, want := task.Name(), "position_sync"; got != want {
+		t.Fatalf("PositionTask.Name() = %q, want %q", got, want)
+	}
+}
 
-func TestPositionTask_Run(t *testing.T) {
-	cfg, err := config.Bootstrap("../../../.secret/config-local.json")
-	if err != nil {
-		t.Fatalf("failed to load config: %v", err)
-	}
-	defer cfg.Firestore.Close()
+func TestPositionTask_Schedule(t *testing.T) {
+	t.Run("uses configured schedule", func(t *testing.T) {
+		task := &PositionTask{CronSchedule: "30 * * * *"}
+		if got, want := task.Schedule(), "30 * * * *"; got != want {
+			t.Fatalf("PositionTask.Schedule() = %q, want %q", got, want)
+		}
+	})
 
-	httpClient := &http.Client{}
-	alpaca := &ct.Alpaca{
-		Client: alpaca.NewClient(alpaca.ClientOpts{
-			APIKey:     cfg.Alpaca.APIKey,
-			APISecret:  cfg.Alpaca.APISecretKey,
-			BaseURL:    cfg.Alpaca.APIBaseURL,
-			HTTPClient: httpClient,
-		}),
-		Notifier: nil,
-	}
-
-	task := &PositionTask{
-		Config:      cfg,
-		Alpaca:      alpaca,
-		FirestoreDB: db.NewFirestore(cfg.Firestore),
-		Logger:      cfg.Logger,
-	}
-	err = task.Run(context.Background())
-	if err != nil {
-		t.Fatalf("AccountTask.Run() error = %v", err)
-	}
+	t.Run("uses default schedule when empty", func(t *testing.T) {
+		task := &PositionTask{}
+		if got, want := task.Schedule(), "0/30 * * * *"; got != want {
+			t.Fatalf("PositionTask.Schedule() = %q, want %q", got, want)
+		}
+	})
 }

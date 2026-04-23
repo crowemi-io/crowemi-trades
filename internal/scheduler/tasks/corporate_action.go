@@ -8,7 +8,7 @@ import (
 	ct "github.com/crowemi-io/crowemi-trades"
 	cfg "github.com/crowemi-io/crowemi-trades/internal/config"
 	"github.com/crowemi-io/crowemi-trades/internal/db"
-	"github.com/crowemi-io/crowemi-trades/internal/models"
+	"github.com/crowemi-io/crowemi-trades/internal/db/sqlc"
 	kitlog "github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 )
@@ -16,7 +16,7 @@ import (
 type CorporateActionTask struct {
 	Config       *cfg.Config
 	Alpaca       *ct.Alpaca
-	FirestoreDB  *db.Firestore
+	Queries      *sqlc.Queries
 	Logger       kitlog.Logger
 	CronSchedule string
 }
@@ -40,41 +40,43 @@ func (t *CorporateActionTask) Run(ctx context.Context) error {
 		_ = level.Info(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "corporate action sync start")
 	}
 
-	var symbols []string = nil
-	categories, err := db.List[*models.Category](ctx, t.FirestoreDB, t.Config.RootCollection()+db.CollectionAllocations)
+	// Get account ID from config
+	account, err := t.Queries.GetAccountByAlpacaID(ctx, &t.Config.Alpaca.AccountID)
 	if err != nil {
+		if t.Logger != nil {
+			_ = level.Error(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "get account failed", "err", err)
+		}
 		return err
 	}
-	for _, c := range categories {
-		s, err := db.List[*models.Symbol](ctx, t.FirestoreDB, t.Config.RootCollection()+db.CollectionAllocations+"/"+c.ID+"/symbols")
-		if err != nil {
-			return err
-		}
-		for _, symbol := range s {
-			symbols = append(symbols, symbol.ID)
-		}
 
+	// Get portfolio symbols for this account
+	symbols, err := t.Queries.ListPortfolioSymbolsByAccountID(ctx, account.ID)
+	if err != nil {
+		if t.Logger != nil {
+			_ = level.Error(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "get portfolio symbols failed", "err", err)
+		}
+		return err
 	}
+
+	symbolList := make([]string, len(symbols))
+	copy(symbolList, symbols)
 
 	now := time.Now()
 	caTypes := []string{"dividend", "merger", "spinoff", "split"}
 	var total int
 
-	for _, symbol := range symbols {
+	for _, symbol := range symbolList {
 		since := now.AddDate(0, 0, -60)
 
-		latest, err := db.GetLatestWhere[*models.CorporateAction](
-			ctx, t.FirestoreDB, t.Config.RootCollection()+db.CollectionCorporateActions,
-			"last_synced_at", "initiating_symbol", symbol,
-		)
-		if err != nil {
+		latest, err := t.Queries.GetLatestCorporateActionByAccountID(ctx, account.ID)
+		if err != nil && err.Error() != "sql: no rows in result set" {
 			if t.Logger != nil {
 				_ = level.Error(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "get latest corporate action failed", "symbol", symbol, "err", err)
 			}
 			return err
 		}
-		if latest != nil && now.Sub(latest.LastSyncedAt).Hours() < 60*24 {
-			since = latest.LastSyncedAt
+		if err == nil && !latest.LastSyncedAt.Time.IsZero() && now.Sub(latest.LastSyncedAt.Time).Hours() < 60*24 {
+			since = latest.LastSyncedAt.Time
 		}
 
 		until := now.AddDate(0, 0, 30)
@@ -97,8 +99,9 @@ func (t *CorporateActionTask) Run(ctx context.Context) error {
 		}
 
 		for _, a := range announcements {
-			doc := models.CorporateActionFromAlpaca(&a)
-			if _, err := db.Create(ctx, t.FirestoreDB, t.Config.RootCollection()+db.CollectionCorporateActions, doc); err != nil {
+			params := db.CorporateActionParamsFromAlpaca(account.ID, &a)
+			_, err = t.Queries.UpsertCorporateAction(ctx, params)
+			if err != nil {
 				if t.Logger != nil {
 					_ = level.Error(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "persist corporate action failed", "announcement_id", a.ID, "symbol", symbol, "err", err)
 				}

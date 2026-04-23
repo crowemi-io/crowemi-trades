@@ -6,7 +6,7 @@ import (
 	ct "github.com/crowemi-io/crowemi-trades"
 	cfg "github.com/crowemi-io/crowemi-trades/internal/config"
 	"github.com/crowemi-io/crowemi-trades/internal/db"
-	"github.com/crowemi-io/crowemi-trades/internal/models"
+	"github.com/crowemi-io/crowemi-trades/internal/db/sqlc"
 	kitlog "github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 )
@@ -14,7 +14,7 @@ import (
 type PositionTask struct {
 	Config       *cfg.Config
 	Alpaca       *ct.Alpaca
-	FirestoreDB  *db.Firestore
+	Queries      *sqlc.Queries
 	Logger       kitlog.Logger
 	CronSchedule string
 }
@@ -38,7 +38,17 @@ func (t *PositionTask) Run(ctx context.Context) error {
 		_ = level.Info(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "position sync start")
 	}
 
-	current, err := db.ListWhere[*models.Position](ctx, t.FirestoreDB, t.Config.RootCollection()+db.CollectionPositions, "is_current", "!=", false)
+	// Get account ID from config
+	account, err := t.Queries.GetAccountByAlpacaID(ctx, &t.Config.Alpaca.AccountID)
+	if err != nil {
+		if t.Logger != nil {
+			_ = level.Error(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "get account failed", "err", err)
+		}
+		return err
+	}
+
+	// Get current positions from DB
+	current, err := t.Queries.ListCurrentPositionsByAccountID(ctx, int64(account.ID))
 	if err != nil {
 		if t.Logger != nil {
 			_ = level.Error(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "list current positions failed", "err", err)
@@ -48,7 +58,7 @@ func (t *PositionTask) Run(ctx context.Context) error {
 
 	currentIDs := make(map[string]struct{}, len(current))
 	for _, p := range current {
-		currentIDs[p.GetID()] = struct{}{}
+		currentIDs[p.Symbol] = struct{}{}
 	}
 
 	positions, err := t.Alpaca.Client.GetPositions()
@@ -61,31 +71,32 @@ func (t *PositionTask) Run(ctx context.Context) error {
 
 	var synced int
 	for _, p := range positions {
-		doc := models.PositionFromAlpaca(&p)
-		if err := db.Upsert(ctx, t.FirestoreDB, t.Config.RootCollection()+db.CollectionPositions, doc); err != nil {
+		params := db.PositionParamsFromAlpaca(int64(account.ID), &p)
+		_, err = t.Queries.UpsertPosition(ctx, params)
+		if err != nil {
 			if t.Logger != nil {
-				_ = level.Error(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "upsert position failed", "asset_id", doc.GetID(), "err", err)
+				_ = level.Error(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "upsert position failed", "symbol", p.Symbol, "err", err)
 			}
 			return err
 		}
 
-		delete(currentIDs, doc.GetID())
+		delete(currentIDs, p.Symbol)
 		synced++
 	}
 
-	var stale int
-	for id := range currentIDs {
-		if err := db.SetFields(ctx, t.FirestoreDB, t.Config.RootCollection()+db.CollectionPositions, id, map[string]interface{}{"is_current": false}); err != nil {
+	// Mark remaining positions as stale
+	if len(currentIDs) > 0 {
+		err = t.Queries.MarkPositionsStale(ctx, int64(account.ID))
+		if err != nil {
 			if t.Logger != nil {
-				_ = level.Error(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "mark position stale failed", "asset_id", id, "err", err)
+				_ = level.Error(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "mark positions stale failed", "err", err)
 			}
 			return err
 		}
-		stale++
 	}
 
 	if t.Logger != nil {
-		_ = level.Info(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "position sync complete", "synced", synced, "stale_marked", stale)
+		_ = level.Info(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "position sync complete", "synced", synced, "stale_marked", len(currentIDs))
 	}
 
 	return nil

@@ -1,14 +1,11 @@
 package config
 
 import (
-	"context"
 	"encoding/base64"
 	"encoding/json"
 	"os"
 
 	kitlog "github.com/go-kit/log"
-
-	"cloud.google.com/go/firestore"
 )
 
 type GoogleCloudFirestore struct {
@@ -60,7 +57,6 @@ type Config struct {
 	GoogleCloud GoogleCloud `json:"google_cloud"`
 	Notifier    Notifier    `json:"notifier" omitempty:"true"`
 	Runtime     Runtime     `json:"runtime"`
-	Firestore   *firestore.Client
 	Logger      kitlog.Logger
 }
 
@@ -84,12 +80,6 @@ func Bootstrap(configPath string) (*Config, error) {
 		}
 		json.Unmarshal(contents, &config)
 	}
-	// firestore
-	firestoreClient, err := firestore.NewClientWithDatabase(context.Background(), config.GoogleCloud.ProjectID, config.GoogleCloud.Firestore.Database)
-	if err != nil {
-		return nil, err
-	}
-	config.Firestore = firestoreClient
 	// logger
 	logger := kitlog.NewLogfmtLogger(kitlog.NewSyncWriter(os.Stderr))
 	logger = kitlog.With(logger, "ts", kitlog.DefaultTimestampUTC, "caller", kitlog.DefaultCaller)

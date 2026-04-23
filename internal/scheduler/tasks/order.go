@@ -7,7 +7,7 @@ import (
 	ct "github.com/crowemi-io/crowemi-trades"
 	cfg "github.com/crowemi-io/crowemi-trades/internal/config"
 	"github.com/crowemi-io/crowemi-trades/internal/db"
-	"github.com/crowemi-io/crowemi-trades/internal/models"
+	"github.com/crowemi-io/crowemi-trades/internal/db/sqlc"
 	kitlog "github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 )
@@ -17,7 +17,7 @@ const maxOrdersPerPage = 500
 type OrderTask struct {
 	Config       *cfg.Config
 	Alpaca       *ct.Alpaca
-	FirestoreDB  *db.Firestore
+	Queries      *sqlc.Queries
 	Logger       kitlog.Logger
 	CronSchedule string
 }
@@ -44,8 +44,18 @@ func (t *OrderTask) Run(ctx context.Context) error {
 		_ = level.Info(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "order sync start")
 	}
 
-	latest, err := db.GetLatest[*models.Order](ctx, t.FirestoreDB, t.Config.RootCollection()+db.CollectionOrders, "created_at")
+	// Get account ID from config
+	account, err := t.Queries.GetAccountByAlpacaID(ctx, &t.Config.Alpaca.AccountID)
 	if err != nil {
+		if t.Logger != nil {
+			_ = level.Error(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "get account failed", "err", err)
+		}
+		return err
+	}
+
+	// Get latest order for this account
+	latest, err := t.Queries.GetLatestOrderByAccountID(ctx, int64(account.ID))
+	if err != nil && err.Error() != "sql: no rows in result set" {
 		if t.Logger != nil {
 			_ = level.Error(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "get latest order failed", "err", err)
 		}
@@ -57,8 +67,8 @@ func (t *OrderTask) Run(ctx context.Context) error {
 		Limit:     maxOrdersPerPage,
 		Direction: "asc",
 	}
-	if latest != nil && !latest.CreatedAt.IsZero() {
-		req.After = latest.CreatedAt
+	if latest.ID > 0 && !latest.AlpacaCreatedAt.Time.IsZero() {
+		req.After = latest.AlpacaCreatedAt.Time
 	}
 
 	var total int
@@ -72,8 +82,9 @@ func (t *OrderTask) Run(ctx context.Context) error {
 		}
 
 		for _, o := range orders {
-			doc := models.OrderFromAlpaca(&o)
-			if _, err := db.Create(ctx, t.FirestoreDB, t.Config.RootCollection()+db.CollectionOrders, doc); err != nil {
+			params := db.OrderParamsFromAlpaca(int64(account.ID), &o)
+			_, err = t.Queries.UpsertOrder(ctx, params)
+			if err != nil {
 				if t.Logger != nil {
 					_ = level.Error(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "persist order failed", "order_id", o.ID, "err", err)
 				}

@@ -2,20 +2,23 @@ package task
 
 import (
 	"context"
+	"errors"
+	"strings"
 
 	"github.com/alpacahq/alpaca-trade-api-go/v3/alpaca"
 	ct "github.com/crowemi-io/crowemi-trades"
 	cfg "github.com/crowemi-io/crowemi-trades/internal/config"
 	"github.com/crowemi-io/crowemi-trades/internal/db"
-	"github.com/crowemi-io/crowemi-trades/internal/models"
+	"github.com/crowemi-io/crowemi-trades/internal/db/sqlc"
 	kitlog "github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/jackc/pgx/v5"
 )
 
 type ActivityTask struct {
 	Config       *cfg.Config
 	Alpaca       *ct.Alpaca
-	FirestoreDB  *db.Firestore
+	Queries      *sqlc.Queries
 	Logger       kitlog.Logger
 	CronSchedule string
 }
@@ -39,8 +42,17 @@ func (t *ActivityTask) Run(ctx context.Context) error {
 		_ = level.Info(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "activity sync start")
 	}
 
-	latest, err := db.GetLatest[*models.Activity](ctx, t.FirestoreDB, t.Config.RootCollection()+db.CollectionActivities, "occurred_at")
+	// Get account ID from config
+	account, err := t.Queries.GetAccountByAlpacaID(ctx, &t.Config.Alpaca.AccountID)
 	if err != nil {
+		if t.Logger != nil {
+			_ = level.Error(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "get account failed", "err", err)
+		}
+		return err
+	}
+
+	latest, err := t.Queries.GetLatestActivityByAccountID(ctx, account.ID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) && !strings.Contains(err.Error(), "no rows in result set") {
 		if t.Logger != nil {
 			_ = level.Error(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "get latest activity failed", "err", err)
 		}
@@ -48,8 +60,8 @@ func (t *ActivityTask) Run(ctx context.Context) error {
 	}
 
 	req := alpaca.GetAccountActivitiesRequest{Direction: "asc"}
-	if latest != nil {
-		req.PageToken = latest.GetID()
+	if latest.ID > 0 {
+		req.PageToken = latest.ActivityID
 	}
 
 	var total int
@@ -67,8 +79,9 @@ func (t *ActivityTask) Run(ctx context.Context) error {
 		}
 
 		for _, a := range activities {
-			doc := models.ActivityFromAlpaca(&a)
-			if _, err := db.Create(ctx, t.FirestoreDB, t.Config.RootCollection()+db.CollectionActivities, doc); err != nil {
+			params := db.ActivityParamsFromAlpaca(account.ID, &a)
+			_, err = t.Queries.CreateActivity(ctx, params)
+			if err != nil {
 				if t.Logger != nil {
 					_ = level.Error(t.Logger).Log("component", "scheduler", "task", t.Name(), "msg", "persist activity failed", "activity_id", a.ID, "err", err)
 				}

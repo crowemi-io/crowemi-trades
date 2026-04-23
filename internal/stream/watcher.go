@@ -31,19 +31,7 @@ func (c *Watcher) Run(ctx context.Context) error {
 
 	opts := []mdstream.StockOption{
 		mdstream.WithCredentials(c.APIKey, c.APISecret),
-		mdstream.WithBars(func(b mdstream.Bar) {
-			_ = level.Info(c.Logger).Log(
-				"component", "stream",
-				"symbol", b.Symbol,
-				"timestamp", b.Timestamp,
-				"open", b.Open,
-				"high", b.High,
-				"low", b.Low,
-				"close", b.Close,
-				"volume", b.Volume,
-				"msg", "minute bar",
-			)
-		}, c.Symbols...),
+		mdstream.WithBars(c.handler, c.Symbols...),
 	}
 	if c.DataURL != "" {
 		opts = append(opts, mdstream.WithBaseURL(c.DataURL))
@@ -51,6 +39,20 @@ func (c *Watcher) Run(ctx context.Context) error {
 
 	client := mdstream.NewStocksClient(feed(c.MarketDataFeed), opts...)
 	return client.Connect(ctx)
+}
+
+func (c *Watcher) handler(b mdstream.Bar) {
+	_ = level.Info(c.Logger).Log(
+		"component", "stream",
+		"symbol", b.Symbol,
+		"timestamp", b.Timestamp,
+		"open", b.Open,
+		"high", b.High,
+		"low", b.Low,
+		"close", b.Close,
+		"volume", b.Volume,
+		"msg", "minute bar",
+	)
 }
 
 func feed(m string) marketdata.Feed {
