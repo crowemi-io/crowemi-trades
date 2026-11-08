@@ -2,5 +2,5 @@
 resource "google_service_account" "this" {
   account_id   = "srv-${local.service}"
   display_name = "srv-${local.service}"
-  description  = ""
+  description  = "${local.service} service account."
 }
